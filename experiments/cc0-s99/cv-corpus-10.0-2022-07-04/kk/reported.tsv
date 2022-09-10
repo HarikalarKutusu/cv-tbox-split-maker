@@ -1,0 +1,24 @@
+sentence	sentence_id	locale	reason
+Үйі жоқтың күйі жоқ.	06ef7d133b664b9ba036e62dae040e09a3ceac65a14891ee7adf11462e48448c	kk	difficult-pronounce
+Тәтті айтқан тәрбие бермейді, ащы айтқан ақиқатқа жеткізбейді.	2de79cfb569b6687eee6a72f81ea63b468f6749ef989c3a5afd9f3d3f5155308	kk	Dayic jok.
+Аз күйікті ас басар.	48931c33b1201ec7fde8a195c014fa6dceba457520002d9b1c51f08f96365cbc	kk	offensive-language
+Аз күйікті ас басар.	48931c33b1201ec7fde8a195c014fa6dceba457520002d9b1c51f08f96365cbc	kk	different-language
+Аз күйікті ас басар.	48931c33b1201ec7fde8a195c014fa6dceba457520002d9b1c51f08f96365cbc	kk	difficult-pronunciation
+Аз күйікті ас басар.	48931c33b1201ec7fde8a195c014fa6dceba457520002d9b1c51f08f96365cbc	kk	YTaGI4Wf3qppPN
+Әйел күйеуін сыйлауды білмесе де, қызғануды біледі.	32fd6fa9d3345e706d6794178c082204235a2996715867f3c8bf1224890a2db9	kk	offensive-language
+Әйел күйеуін сыйлауды білмесе де, қызғануды біледі.	32fd6fa9d3345e706d6794178c082204235a2996715867f3c8bf1224890a2db9	kk	different-language
+Қатыны өлген қызы бар үйге қарап жылайды.	45fa6fdedbab15b1da8b0b07830612e05bf0c78a725afd8b325cda3d9540c8e4	kk	grammar-or-spelling
+Қатыны өлген қызы бар үйге қарап жылайды.	45fa6fdedbab15b1da8b0b07830612e05bf0c78a725afd8b325cda3d9540c8e4	kk	different-language
+Еңбектен қашқан дөңбекке жолығады.	0d983ec478946aa551adf011577d1cf666f7330222583778a9dd18b0912323f2	kk	offensive-language
+Жұпыны — жұғымды, сыпайы — сүйкімді.	3561f51163be51e9b791c2b2fbd1f09c50d6aaa80c17b93328af143c5e40cd71	kk	grammar-or-spelling
+Жұпыны — жұғымды, сыпайы — сүйкімді.	3561f51163be51e9b791c2b2fbd1f09c50d6aaa80c17b93328af143c5e40cd71	kk	difficult-pronunciation
+Жұпыны — жұғымды, сыпайы — сүйкімді.	3561f51163be51e9b791c2b2fbd1f09c50d6aaa80c17b93328af143c5e40cd71	kk	OZd15Zn
+Берместің асы піспес, қазаны оттан түспес.	1075c36d87227b00f08fd0556b3210c097e645742da3e3526d59d424c9ff68c9	kk	offensive-language
+Берместің асы піспес, қазаны оттан түспес.	1075c36d87227b00f08fd0556b3210c097e645742da3e3526d59d424c9ff68c9	kk	difficult-pronunciation
+Батыр — жай күні бір адам, жау көрінсе, мың адам.	45b8f269eda9714d4159ef291c840068819edecd187667b1ef55ef1683495526	kk	grammar-or-spelling
+Батыр — жай күні бір адам, жау көрінсе, мың адам.	45b8f269eda9714d4159ef291c840068819edecd187667b1ef55ef1683495526	kk	different-language
+Батыр — жай күні бір адам, жау көрінсе, мың адам.	45b8f269eda9714d4159ef291c840068819edecd187667b1ef55ef1683495526	kk	difficult-pronunciation
+Талапты ерге нұр жауар, талапсыз неме құр қалар.	3204ec02c94a11305e62e2616de2eda460aca1985f4dc613ee1cc8286934a9c6	kk	different-language
+Қасқа бас қайызғақсыз болар.	2a373acebc9e91480a730df7945f8ef4614d674d5ccf2d270138e19ad21f8864	kk	offensive-language
+Қасқа бас қайызғақсыз болар.	2a373acebc9e91480a730df7945f8ef4614d674d5ccf2d270138e19ad21f8864	kk	8ZAQm49Om
+Ит жаманы түз қорыр, жігіт жаманы қыз қорыр.	309249470be982f2ac9c50713ab46ebcfbc29d2ad87334302117e611a86430ff	kk	different-language
