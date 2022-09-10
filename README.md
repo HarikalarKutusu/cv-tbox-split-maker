@@ -1,6 +1,6 @@
 # Common Voice Diversity Check
 
-Simple script which checks diversity in Mozilla Common Voice default splits and/or alternative splits you provide for multiple CV versions and languages.
+Simple script which checks general and demographic diversity in Mozilla Common Voice default splits and/or alternative splits you provide for multiple CV versions and languages.
 
 Currently only gender is processed.
 
