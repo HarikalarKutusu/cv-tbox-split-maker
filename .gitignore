@@ -1,5 +1,16 @@
+# Exclude large directory contents
+experiment*/*
+!experiment*/.*
+!experiment*/*/.*
+
+# Internal docs
+.doc
+
 # Temprary files
 ~*.*
+
+# Environmental
+.vscode
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
