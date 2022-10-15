@@ -1,12 +1,12 @@
 # Exclude large directory contents
-experiment*/*
-!experiment*/.*
-!experiment*/*/.*
+experiments-saved/*
+experiments/*
+!**/.gitkeep
 
 # Internal docs
 .doc
 
-# Temprary files
+# Temporary files
 ~*.*
 
 # Environmental
