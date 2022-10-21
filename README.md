@@ -23,7 +23,7 @@ To prepare:
 
 - Clone the repo, modify the experiment directory for your tests (actually you only need the scripts at the root of the repo, you may use your own "experiments" directory.
   - Create splitting algorithm directories under "experiments", these are your different split strategies
-  - Under your experiment directory put Common Voice version directories. 
+  - Under your experiment directory put Common Voice version directories.
   - Under CV version directories create language directories (use language codes)
   - Put your tsv files under that language directory (do not put the actual clips, they are not used and they will take space)
 - Run a script you desire
@@ -66,9 +66,34 @@ To run a script, you need to create a venv and include the necessary tooling wit
 
 The script will scan all experiments, versions, and languages under experiments directory and builds results/$diversity_data.tsv file containing everything. You can then take it and analyze further or use the Excel file provided.
 
+## Setup and Run
+
+Developed and tested on Python 3.8.x but should work on later versions. It is preferred to use a virtual environment.
+
+1. Create venv and activate it
+2. Clone the repo and cd into it
+3. Install dependencies using `pip install -r requirements.txt`
+4. Prepare your data as descripbed above
+5. Run the script you want
+
+## Other
+
+### License
+
+AGPL v3.0
+
+### TO-DO/Project plan, issues and feature requests
+
+You can look at the results [Common Voice Dataset Analyzer](https://github.com/HarikalarKutusu/cv-tbox-dataset-analyzer).
+This will eventually be part of the Common Voice Toolbox's Core, but it will be developed here...
+
+The project status can be found on the [project page](https://github.com/users/HarikalarKutusu/projects/10). Please post [issues and feature requests](https://github.com/HarikalarKutusu/common-voice-diversity-check/issues), or [Pull Requests](https://github.com/HarikalarKutusu/common-voice-diversity-check/pulls) to enhance.
+
 ---
 
-## TO-DO
+---
+
+## FUTURE REFERENCE
 
 Although this will go into the core, we will also publish it separately. Below you'll find what it will become (tentative, might change):
 
@@ -99,7 +124,7 @@ Run Common Voice's Corpora Creator with alternative recordings per sentence sett
 
 For this to work, you need to clone and compile Mozilla Common Voice CorporaCreator repo as follows:
 
-```bash
+```sh
 git clone https://github.com/common-voice/CorporaCreator.git
 cd CorporaCreator; python3 setup.py install
 ```
@@ -110,7 +135,7 @@ In this strategy sentence unbiasing has the presedence, so that no sentence is r
 
 Ex:
 
-```bash
+```sh
 python tbox_split_maker --exp ~/cv/experiments --in default --out test-70-15-15 --ss sentence 70 15 15
 ```
 
@@ -120,7 +145,7 @@ This algorithm is similar to the "sentence" strategy, but it ensures no same voi
 
 Ex:
 
-```bash
+```sh
 python tbox_split_maker --exp ~/cv/experiments --in default --out test-70-15-15 --ss sentence-voice 70 15 15 # note that these numbers are target, result will be different
 ```
 
@@ -130,6 +155,6 @@ This is a dummy algorithm and does not care on any bias. It splits the whole dat
 
 Ex:
 
-```bash
+```sh
 python tbox_split_maker --exp ~/cv/experiments --in default --out random-50-10-10 --ss sentence-voice 50 10 10
 ```
