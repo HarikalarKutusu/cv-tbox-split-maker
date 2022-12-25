@@ -65,7 +65,7 @@ MAX_TEST_USER: float = 0.50
 MAX_DEV_USER: float  = 0.25
 
 # Program parameters
-VERBOSE: bool = True
+VERBOSE: bool = False
 FAIL_ON_NOT_FOUND: bool = True
 
 #
@@ -100,7 +100,7 @@ def df_write(df: pd.DataFrame, fpath: str) -> None:
 # Handle one split creation, this is where calculations happen
 #
 
-def corpora_creator_v2(val_path: str, dst_path: str):
+def corpora_creator_v1(val_path: str, dst_path: str):
     """Processes validated.tsv and create new train, dev, test splits"""
 
     #
@@ -356,13 +356,13 @@ def corpora_creator_v2(val_path: str, dst_path: str):
 #
 
 def main() -> None:
-    print('=== New Corpora Creator Algorithm Proposal v3 for Common Voice Datasets ===')
+    print('=== New Corpora Creator Algorithm Proposal v1 for Common Voice Datasets ===')
 
     # Copy source experiment tree to destination experiment
     experiments_path: str = os.path.join(HERE, 'experiments')
     src_exppath: str = os.path.join(experiments_path, SRC_ALGO_DIR)
     dst_exppath: str = os.path.join(experiments_path, DST_ALGO_DIR)
-    shutil.copytree(src=src_exppath, dst=dst_exppath, dirs_exist_ok=True, ignore=shutil.ignore_patterns('*.tsv'))
+    # shutil.copytree(src=src_exppath, dst=dst_exppath, dirs_exist_ok=True, ignore=shutil.ignore_patterns('*.tsv'))
 
     # !!! from now on we will work on destination !!!
 
@@ -376,7 +376,10 @@ def main() -> None:
 
     # For each corpus
     cnt: int = 0 # counter of corpora done
+    cnt_skipped: int = 0    # count of corpora skipped
     start_time: datetime = datetime.now()
+
+    cnt_total: int = len(all_validated)
 
     for val_path in all_validated:
         src_corpus_dir: str = os.path.split(val_path)[0]
@@ -384,25 +387,34 @@ def main() -> None:
         ver: str = os.path.split(os.path.split(src_corpus_dir)[0])[1]
         dst_corpus_dir: str = os.path.join(dst_exppath, ver, lc)
 
-        # print(src_corpus_dir, dst_corpus_dir)
-        # print(ver, lc)
-        # sys.exit()
-
         cnt += 1
         if VERBOSE:
-            print(f'\n=== Processing {cnt}/{len(all_validated)} => {ver} - {lc}\n')
+            print(f'\n=== Processing {cnt}/{cnt_total} => {ver} - {lc}\n')
         else:
             print('\033[F' + ' ' * 80)
-            print(f'\033[FProcessing {cnt}/{len(all_validated)} => {ver} - {lc}')
+            print(f'\033[FProcessing {cnt}/{cnt_total} => {ver} - {lc}')
         
-        corpora_creator_v2(val_path=val_path, dst_path=dst_corpus_dir)
+        if os.path.isfile(os.path.join(dst_corpus_dir, 'train.tsv')):
+            # Already there, so skip
+            cnt_skipped += 1
+        else:
+            os.makedirs(dst_corpus_dir, exist_ok=True)
+            corpora_creator_v1(val_path=val_path, dst_path=dst_corpus_dir)
+            print()
 
 
     finish_time: datetime = datetime.now()
     process_timedelta: timedelta = finish_time - start_time
     process_seconds: float = process_timedelta.total_seconds()
-    avg_seconds: float = process_seconds/len(all_validated)
+    avg_seconds: float = process_seconds/cnt_total
+    cnt_processed: int = cnt-cnt_skipped
+    avg_seconds_new: float = -1
+    if cnt_processed > 0:
+        avg_seconds_new: float = process_seconds/cnt_processed
     print('\n' + '-' * 80)
-    print(f'Finished processing of {len(all_validated)} corpora in {str(process_timedelta)}, avg duration {float("{:.3f}".format(avg_seconds))}')
+    print(f'Finished processing of {cnt_total} corpora in {str(process_timedelta)}, avg duration {float("{:.3f}".format(avg_seconds))}')
+    print(f'Processed: {cnt}, Skipped: {cnt_skipped}, New: {cnt_processed}')
+    if cnt_processed > 0:
+        print(f'Avg. time new split creation: {float("{:.3f}".format(avg_seconds_new))}')
 
 main()
