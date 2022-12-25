@@ -1,2 +1,3 @@
-pandas
-psutil
+pandas=1.5.2
+psutil=5.9.6
+git+https://github.com/common-voice/CorporaCreator.git
