@@ -27,6 +27,8 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 
+import corporacreator
+
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
     sys.path.append(HERE)
