@@ -27,8 +27,6 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 
-import corporacreator as cc
-
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
     sys.path.append(HERE)
@@ -74,6 +72,136 @@ def df_write(df: pd.DataFrame, fpath: str) -> None:
     df.to_csv(fpath, header=True, index=False, encoding="utf-8", sep='\t', escapechar='\\', quoting=csv.QUOTE_NONE)
 
 #
+# Adapted from original Corpora Creator - removed unneeded features
+# - Removed logger
+# - No need to re-partition (we already have validated)
+# - No need to preprocess (s1 already preprocessed the data)
+# - Create only train, dev, test
+# 
+
+#
+# Sample Size Calculation, taken from CorporaCreaotr repo (statistics.py)
+#
+def calc_sample_size(population_size: int) -> float:
+    """Calculates the sample size.
+
+    Calculates the sample size required to draw from a population size `population_size`
+    with a confidence level of 99% and a margin of error of 1%.
+
+    Args:
+    population_size (int): The population size to draw from.
+    """
+    margin_of_error: float = 0.01
+    fraction_picking: float = 0.50
+    z_score: float = 2.58  # Corresponds to confidence level 99%
+    numerator: float = (z_score ** 2 * fraction_picking * (1 - fraction_picking)) / (
+        margin_of_error ** 2
+    )
+    denominator: float = 1 + (z_score ** 2 * fraction_picking * (1 - fraction_picking)) / (
+        margin_of_error ** 2 * population_size
+    )
+    return numerator / denominator
+
+class LocalCorpus:
+    """Corpus representing a Common Voice datasets for a given locale.
+    Args:
+      args ([str]): Command line parameters as list of strings
+      locale (str): Locale this :class:`corporacreator.Corpus` represents
+      corpus_data (:class:`pandas.DataFrame`): `pandas.DataFrame` Containing the corpus data
+    Attributes:
+        args ([str]): Command line parameters as list of strings
+        locale (str): Locale of this :class:`corporacreator.Corpus`
+        corpus_data (:class:`pandas.DataFrame`): `pandas.DataFrame` Containing the corpus data
+    """
+
+    def __init__(self, args, locale, corpus_data):
+        self.args = args
+        self.locale = locale
+        self.corpus_data = corpus_data
+
+    def create(self):
+        """Creates a :class:`corporacreator.Corpus` for `self.locale`.
+        """
+        self._post_process_valid_data()
+
+    def _post_process_valid_data(self):
+        # Remove duplicate sentences while maintaining maximal user diversity at the frame's start (TODO: Make addition of user_sentence_count cleaner)
+        speaker_counts = self.validated["client_id"].value_counts()
+        speaker_counts = speaker_counts.to_frame().reset_index()
+        speaker_counts.columns = ["client_id", "user_sentence_count"]
+        self.validated = self.validated.join(
+            speaker_counts.set_index("client_id"), on="client_id"
+        )
+        self.validated = self.validated.sort_values(["user_sentence_count", "client_id"])
+        validated = self.validated.groupby("sentence").head(self.args.duplicate_sentence_count)
+
+        validated = validated.sort_values(["user_sentence_count", "client_id"], ascending=False)
+        validated = validated.drop(columns="user_sentence_count")
+        self.validated = self.validated.drop(columns="user_sentence_count")
+
+
+        train = pd.DataFrame(columns=validated.columns)
+        dev = pd.DataFrame(columns=validated.columns)
+        test = pd.DataFrame(columns=validated.columns)
+
+        train_size = dev_size = test_size = 0
+
+        if (len(validated) > 0):
+            # Determine train, dev, and test sizes
+            train_size, dev_size, test_size = self._calculate_data_set_sizes(len(validated))
+            # Split into train, dev, and test datasets
+            continous_client_index, uniques = pd.factorize(validated["client_id"])
+            validated["continous_client_index"] = continous_client_index
+
+            for i in range(max(continous_client_index), -1, -1):
+                if len(test) + len(validated[validated["continous_client_index"] == i]) <= test_size:
+                    test = pd.concat([test, validated[validated["continous_client_index"] == i]], sort=False)
+                elif len(dev) + len(validated[validated["continous_client_index"] == i]) <= dev_size:
+                    dev = pd.concat([dev, validated[validated["continous_client_index"] == i]], sort=False)
+                else:
+                    train = pd.concat([train, validated[validated["continous_client_index"] == i]], sort=False)
+
+        self.train = train.drop(columns="continous_client_index", errors="ignore")
+        self.dev = dev.drop(columns="continous_client_index", errors="ignore")
+        self.test = test[:train_size].drop(columns="continous_client_index", errors="ignore")
+
+    def _calculate_data_set_sizes(self, total_size):
+        # Find maximum size for the training data set in accord with sample theory
+        train_size = total_size
+        dev_size = test_size = 0
+        for train_size in range(total_size, 0, -1):
+            # calculated_sample_size = int(corporacreator.sample_size(train_size))
+            calculated_sample_size = int(calc_sample_size(train_size))
+            if 2 * calculated_sample_size + train_size <= total_size:
+                dev_size = calculated_sample_size
+                test_size = calculated_sample_size
+                break
+        return train_size, dev_size, test_size
+
+    def save(self, directory):
+        """Saves this :class:`corporacreator.Corpus` in `directory`.
+        Args:
+          directory (str): Directory into which this `corporacreator.Corpus` is saved.
+        """
+        directory = os.path.join(directory, self.locale)
+        if not os.path.exists(directory):
+            os.mkdir(directory)
+        datasets = ["train", "dev", "test"]
+
+        # _logger.debug("Saving %s corpora..." % self.locale)
+        for dataset in datasets:
+            self._save(directory, dataset)
+        # _logger.debug("Saved %s corpora." % self.locale)
+
+    def _save(self, directory, dataset):
+        path = os.path.join(directory, dataset + ".tsv")
+
+        dataframe = getattr(self, dataset)
+        dataframe.to_csv(
+            path, sep="\t", header=True, index=False, encoding="utf-8", escapechar='\\', quoting=csv.QUOTE_NONE
+        )
+
+#
 # Handle one split creation, this is where calculations happen
 #
 
@@ -88,20 +216,21 @@ def corpora_creator_original(lc: str, val_path: str, dst_path: str, duplicate_se
     temp_path: str = os.path.join(HERE, '.temp')
 
     # call corpora creator with only validated (we don't need others)
-    corpus: pd.DataFrame = df_read(val_path)
+    df_corpus: pd.DataFrame = df_read(val_path)
 
     # Must have records in it
-    if corpus.shape[0] > 0:
+    if df_corpus.shape[0] > 0:
         # create temp dir
         os.makedirs(temp_path, exist_ok=True)
 
         # handle corpus
-        args = cc.parse_args(
+        args = corporacreator.parse_args(
             ['-d', temp_path, '-f', val_path, '-s', str(duplicate_sentences)]
             )
-        corpora: cc.Corpus = cc.Corpus(args, lc, corpus)
-        corpora.create()
-        corpora.save(temp_path)
+        corpus: LocalCorpus = LocalCorpus(args, lc, df_corpus)
+        corpus.validated = df_corpus
+        corpus.create()
+        corpus.save(temp_path)
 
         # move required files to destination
         shutil.move(os.path.join(temp_path, lc, 'train.tsv'), dst_path)
