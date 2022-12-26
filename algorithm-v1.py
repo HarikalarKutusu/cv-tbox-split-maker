@@ -65,8 +65,9 @@ MAX_TEST_USER: float = 0.50
 MAX_DEV_USER: float  = 0.25
 
 # Program parameters
-VERBOSE: bool = False
-FAIL_ON_NOT_FOUND: bool = True
+VERBOSE: bool = False               # If true, report all on different lines, else show only generated
+FAIL_ON_NOT_FOUND: bool = True      # If true, fail if source is not found, else skip it
+FORCE_CREATE: bool = False          # If true, regenerate the splits even if they exist
 
 #
 # DataFrame file read-write 
@@ -394,8 +395,8 @@ def main() -> None:
             print('\033[F' + ' ' * 80)
             print(f'\033[FProcessing {cnt}/{cnt_total} => {ver} - {lc}')
         
-        if os.path.isfile(os.path.join(dst_corpus_dir, 'train.tsv')):
-            # Already there, so skip
+        if not FORCE_CREATE and os.path.isfile(os.path.join(dst_corpus_dir, 'train.tsv')):
+            # Already there and is not forced to recreate, so skip
             cnt_skipped += 1
         else:
             os.makedirs(dst_corpus_dir, exist_ok=True)
