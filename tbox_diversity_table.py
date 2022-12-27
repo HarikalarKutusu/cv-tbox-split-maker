@@ -22,12 +22,17 @@
 # [copyright]
 ###########################################################################
 
-from genericpath import isfile
 import sys, os, glob, csv
 from pathlib import Path
-# from datetime import datetime
+import datetime as dt
 import numpy as np
 import pandas as pd
+from typing import Any
+
+# MULTIPROCESSING
+import multiprocessing as mp
+import psutil
+
 
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
@@ -62,8 +67,10 @@ CV_GENDERS: "list[str]" = [NODATA, 'male', 'female', 'other']
 CV_AGES: "list[str]"    = [NODATA, 'teens', 'twenties', 'thirties', 'fourties', 'fifties', 'sixties', 'seventies', 'eighties', 'nineties']
 
 # Program parameters
-VERBOSE: bool = False
+VERBOSE: bool = True
 FAIL_ON_NOT_FOUND: bool = True
+# PROC_COUNT: int = psutil.cpu_count(logical=False) - 1
+PROC_COUNT: int = psutil.cpu_count(logical=True)
 
 #
 # DataFrame file read-write 
@@ -97,7 +104,7 @@ def df_write(df: pd.DataFrame, fpath: str) -> None:
 # Handle one split, this is where calculations happen
 #
 
-def handle_split(exp: str, ver: str, lc: str, split: str, fpath: str):
+def handle_split(fpath: str) -> dict[str, Any]:
     """Processes a single split and returns calculated values"""
 
     def _get_row_total(pt: pd.DataFrame, lbl: str) -> int:
@@ -106,16 +113,31 @@ def handle_split(exp: str, ver: str, lc: str, split: str, fpath: str):
     def _get_col_total(pt: pd.DataFrame, lbl: str) -> int:
         return int(pd.to_numeric(pt.loc['TOTAL', lbl])) if lbl in list(pt.columns.values) else int(0)
 
+    sep: str = os.path.sep
+    expanded_path: "list[str]" = fpath.split(sep)
+    split: str = expanded_path[-1].split('.')[0]
+    lc: str = expanded_path[-2]
+    ver: str = expanded_path[-3]
+    exp: str = expanded_path[-4]
+
     df: pd.DataFrame = df_read(fpath)
+    res: dict[str, Any] = {}
+
+    if VERBOSE:
+        print(f'Processing {exp} - {ver} - {lc} - {split}')
+    else:
+        print('\033[F' + ' ' * 100)
+        print(f'\033[FProcessing {exp} - {ver} - {lc} - {split}')
+
     # Do nothing, if there is no data
     if df.shape[0] == 0:
-        results = {
+        res = {
             'experiment':               exp,
             'version':                  ver,
             'locale':                   lc,
             # 'split':                    split,
         }
-        return results
+        return res
 
     # The default column structure of CV dataset splits is as follows
     # client_id, path, sentence, up_votes, down_votes, age, gender, accents, locale, segment
@@ -148,7 +170,7 @@ def handle_split(exp: str, ver: str, lc: str, split: str, fpath: str):
     _males: int                         = _get_col_total(_pt, 'male')
     _females: int                       = _get_col_total(_pt, 'female')
 
-    results = {
+    res = {
         'experiment':               exp,
         'version':                  ver,
         'locale':                   lc,
@@ -182,88 +204,63 @@ def handle_split(exp: str, ver: str, lc: str, split: str, fpath: str):
         'genders_f_m_ratio':        float("{:.4f}".format(_females / _males)) if _males > 0 else -1,
 
     }
-    return results
+    return res
 
 #
 # Main loop for experiments-versions-locales
 #
 
 def main() -> None:
-    print('=== Diversity checker for Common Voice Datasets ===')
+    print('=== Build Diversity Table for Common Voice Datasets ===')
     print()
 
-    # START TEST AREA
-    # handle_split('cc0-default', 'cv-corpus-10.0-2022-07-04', 'tr', 'validated',
-    #     'C:\\GITREPO\\_HK_GITHUB\\common-voice-diversity-check\\experiments\\cc0-default\\cv-corpus-10.0-2022-07-04\\tr\\validated.tsv'
-    #     )
-    # sys.exit(0)
-    # END TEST AREA
+    start_time: dt.datetime = dt.datetime.now()
 
     # TODO these should be set as arguments
     experiments_dir: str = os.path.join(HERE, 'experiments')
-    # print(HERE)
-    # print(experiments_dir)
 
     # Prepare final dataframe
-    resdf: pd.DataFrame = pd.DataFrame(columns=RESULT_COLS).reset_index(drop=True)
+    df_result: pd.DataFrame = pd.DataFrame(columns=RESULT_COLS).reset_index(drop=True)
 
-    # Get total for progress display
-    all_train: "list[str]" = glob.glob(os.path.join(experiments_dir, '**', 'train.tsv'), recursive=True)
-    # print(all_validated)
-    total_dataset_cnt: int = len(all_train) # * len(SPLITS_IDS)
+    # Get all tsv list
+    tsv_paths: "list[str]" = []
+    for sp in SPLITS_IDS:
+        tsv_paths.extend(glob.glob(os.path.join(experiments_dir, '**', sp + '.tsv'), recursive=True))
+    tsv_paths.sort()
+    cnt_total: int = len(tsv_paths)
 
-    # Get experiment list
-    experiment_paths: "list[str]" = glob.glob(os.path.join(experiments_dir, '*'), recursive=False)
-    # print(experiments)
+    print(f'= Processing {cnt_total} splits using {PROC_COUNT} processes\n')
 
-    # For each experiment
-    cnt: int = 0 # counter
-    for exp_path in experiment_paths:
-        exp_name: str = os.path.split(exp_path)[-1]
-        if VERBOSE:
-            print(f'= Processing Experiment: {exp_name}')
-        # Now get versions inside it
-        exp_corpora_paths: "list[str]" = glob.glob(os.path.join(exp_path, '*'), recursive=False)
-        # print(exp_corpora)
+    # Now multi-process each split
+    with mp.Pool(PROC_COUNT) as pool:
+        results: list[dict[str, Any]] = pool.map(
+            handle_split,
+            tsv_paths
+            )
 
-        # For each corpus
-        for corpus_path in exp_corpora_paths:
-            exp_corpus_name: str = os.path.split(corpus_path)[-1]
-            if VERBOSE:
-                print(f'== Processing Corpus: {exp_corpus_name}')
-            # Now get the list of locales
-            exp_corpus_locale_paths: "list[str]" = glob.glob(os.path.join(corpus_path, '*'), recursive=False)
-            # print(exp_corpus_locales)
-            
-            # For each locale
-            for locale_path in exp_corpus_locale_paths:
-                cnt += 1
-                locale_name: str = os.path.split(locale_path)[-1]
-                if VERBOSE:
-                    print(f'=== Processing Locale: {locale_name}')
-
-                # Now get values for each split we are interested in
-                for split_id in SPLITS_IDS:
-                    split_path: str = os.path.join(locale_path, split_id + '.tsv')
-                    if os.path.isfile(split_path):
-                        if VERBOSE:
-                            print(f'==== Processing Split: {split_path}')
-                        else:
-                            print('\033[F' + ' ' * 80)
-                            print(f'\033[FProcessing {cnt}/{total_dataset_cnt} => {exp_name} - {exp_corpus_name} - {locale_name} - {split_id}')
-                        # get stats
-                        res = handle_split(exp=exp_name, ver=exp_corpus_name, lc=locale_name, split=split_id, fpath=split_path)
-                        # add to resdf
-                        resdf: pd.DataFrame = pd.concat([resdf.loc[:], pd.DataFrame([res])])
-                # done splits in locale
-            # done locales in version
-        # done version in versions
-    # done experiment in experiments
+    # move to resdf
+    # 'experiment', 'version', 'locale', 'split'
+    df_result: pd.DataFrame = pd.DataFrame.from_records(results)
+    df_result.sort_values(['experiment', 'version', 'locale', 'split'], inplace=True)
 
     # now, save the result
     fn: str = os.path.join(HERE, 'results', '$diversity_data.tsv')
-    df_write(resdf, fn)
+    df_write(df_result, fn)
 
+    finish_time: dt.datetime = dt.datetime.now()
+    process_timedelta: dt.timedelta = finish_time - start_time
+    process_seconds: float = process_timedelta.total_seconds()
+    avg_seconds: float = process_seconds/cnt_total
+    cnt_net: int = df_result.shape[0]
+    cnt_skipped: int = cnt_total - cnt_net
+    avg_seconds_net: float = -1
+    if cnt_net > 0:
+        avg_seconds_net = process_seconds/cnt_net
+    print('\n' + '-' * 80)
+    print(f'Finished processing of {cnt_total} corpora in {str(process_timedelta)} secs, avg duration {float("{:.3f}".format(avg_seconds))} secs')
+    print(f'Skipped: {cnt_skipped}, Added: {cnt_net}')
+    if cnt_net > 0:
+        print(f'Avg. net time: {float("{:.3f}".format(avg_seconds_net))} secs')
 
-
-main()
+if __name__ == '__main__':
+    main()
