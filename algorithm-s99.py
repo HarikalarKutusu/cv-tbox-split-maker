@@ -213,8 +213,6 @@ def corpora_creator_original(lc: str, val_path: str, dst_path: str, duplicate_se
 
     # Assume result false
     res: bool = False
-    # destination dir
-    os.makedirs(dst_path, exist_ok=True)
     # temp dir
     temp_path: str = os.path.join(HERE, '.temp')
 
@@ -236,14 +234,13 @@ def corpora_creator_original(lc: str, val_path: str, dst_path: str, duplicate_se
         corpus.save(temp_path)
 
         # move required files to destination
+        os.makedirs(dst_path, exist_ok=True)
         shutil.move(os.path.join(temp_path, lc, 'train.tsv'), dst_path)
         shutil.move(os.path.join(temp_path, lc, 'dev.tsv'), dst_path)
         shutil.move(os.path.join(temp_path, lc, 'test.tsv'), dst_path)
+        shutil.rmtree(temp_path)
 
         res = True
-
-        # remove .temp
-        shutil.rmtree(temp_path)
     
     return res
 
@@ -315,11 +312,11 @@ def main() -> None:
     cnt_processed: int = cnt-cnt_skipped
     avg_seconds_new: float = -1
     if cnt_processed > 0:
-        avg_seconds_new: float = process_seconds/cnt_processed
+        avg_seconds_new = process_seconds/cnt_processed
     print('\n' + '-' * 80)
-    print(f'Finished processing of {cnt_total} corpora in {str(process_timedelta)}, avg duration {float("{:.3f}".format(avg_seconds))}')
+    print(f'Finished processing of {cnt_total} corpora in {str(process_timedelta)} secs, avg duration {float("{:.3f}".format(avg_seconds))} secs')
     print(f'Processed: {cnt}, Skipped: {cnt_skipped}, New: {cnt_processed}')
     if cnt_processed > 0:
-        print(f'Avg. time new split creation: {float("{:.3f}".format(avg_seconds_new))}')
+        print(f'Avg. time new split creation: {float("{:.3f}".format(avg_seconds_new))} secs')
 
 main()
