@@ -37,6 +37,8 @@ if not HERE in sys.path:
 # Constants - TODO These should be arguments
 #
 
+DUPLICATE_SENTENCE_COUNT: int = 99
+
 # Directories
 SRC_ALGO_DIR: str = 's1'
 DST_ALGO_DIR: str = 's99'
@@ -300,7 +302,7 @@ def main() -> None:
                     lc=lc,
                     val_path=val_path,
                     dst_path=dst_corpus_dir,
-                    duplicate_sentences=99
+                    duplicate_sentences=DUPLICATE_SENTENCE_COUNT
                     ):
                 cnt_skipped += 1
             print()
