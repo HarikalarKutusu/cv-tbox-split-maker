@@ -24,7 +24,7 @@
 import sys, os, shutil, glob, csv
 from pathlib import Path
 from datetime import datetime, timedelta
-from typing import Any, Literal
+from typing import Any
 import numpy as np
 import pandas as pd
 import av
@@ -58,11 +58,11 @@ VERBOSE: bool = False               # If true, report all on different lines, el
 FAIL_ON_NOT_FOUND: bool = True      # If true, fail if source is not found, else skip it
 FORCE_CREATE: bool = False          # If true, regenerate the splits even if they exist
 
-# DF related (fır clip durations)
-DF_COLS: list[str] = ['clip', 'duration']
-DF_FN: Literal['$clip_durations.tsv'] = '$clip_durations.tsv'
-DF_ERR_COLS: list[str] = ['clip', 'error']
-DF_ERR_FN: Literal['$clip_durations_errors.tsv'] = '$clip_durations_errors.tsv'
+# DF related (for clip durations)
+CDUR_COLS: list[str] = ['clip', 'duration']
+CDUR_FN: str = '$clip_durations.tsv'
+CDUR_ERR_COLS: list[str] = ['clip', 'error']
+CDUR_ERR_FN: str = '$clip_durations_errors.tsv'
 
 #
 # DataFrame file read-write 
@@ -281,7 +281,7 @@ def build_clip_durations_table(srcdir):
     total_dur: float = 0
     perc = 0
     # Start display
-    print(f'Creating $clip_durations.tsv table for {num_files} clips into "{srcdir}"')
+    print(f'Creating {CDUR_FN} table for {num_files} clips into "{srcdir}"')
     print('+' * perc + '.' * (100-perc) + f' {perc}% - {cnt}/{num_files} => {0.00} hours.')
     data: list[Any] = []
     data_err: list[Any] = []
@@ -329,11 +329,11 @@ def build_clip_durations_table(srcdir):
     print(f'Finished {num_files} files in {pduration} sec, avg= {pduration_sec/num_files}.')
     print(f'Total audio duration {round(total_dur/3600,2)} hours, avg. duration= {total_dur/(num_files-skipped)} sec.')
     # Build dataframe and save
-    df: pd.DataFrame = pd.DataFrame(data, columns=DF_COLS).reset_index(drop=True)
-    df_write(df, fpath=os.path.join(srcdir, DF_FN))
+    df: pd.DataFrame = pd.DataFrame(data, columns=CDUR_COLS).reset_index(drop=True)
+    df_write(df, fpath=os.path.join(srcdir, CDUR_FN))
     if len(data_err) > 0:
-      df_err: pd.DataFrame = pd.DataFrame(data_err, columns=DF_ERR_COLS).reset_index(drop=True)
-      df_write(df, fpath=os.path.join(srcdir, DF_ERR_FN))
+      df_err: pd.DataFrame = pd.DataFrame(data_err, columns=CDUR_ERR_COLS).reset_index(drop=True)
+      df_write(df, fpath=os.path.join(srcdir, CDUR_ERR_FN))
 
 
 #
@@ -351,16 +351,28 @@ def main() -> None:
     # Calculate clip durations?
     if DO_CALC_CLIP_DURATIONS:
         print('=== REFRESH CLIP DURATIONS ===')
-        # remove existing clip durations
-        old_clip_durations: list[str] = glob.glob(os.path.join(experiments_path, '**', '$clip_durations.tsv'), recursive=True)
-        print(f'=== Remove existing {len(old_clip_durations)} files...')
-        for clip_path in old_clip_durations:
-            os.remove(path=clip_path)
+        # remove existing clip durations from older versions
+        old_clip_durations: list[str] = glob.glob(os.path.join(experiments_path, '**', CDUR_FN), recursive=True)
+        print(f'=== Found {len(old_clip_durations)} files in local files, we will delete older ones...')
+        for inx, clip_path  in enumerate(old_clip_durations):
+            # keep for last version
+            if not (clip_path.split(os.sep)[-4] == SOURCE_DATASET):
+                print("Remove:", inx, '/'.join(clip_path.split(os.sep)[-4:]))
+                os.remove(path=clip_path)
+            else:
+                print("Skip:", inx, '/'.join(clip_path.split(os.sep)[-4:]))
         # recalculate clip durations
-        clips_dirs: list[str] = glob.glob(os.path.join(SOURCE_DATASET_DIR, SOURCE_DATASET, '**', 'clips'), recursive=True)
-        print(f'=== Processing {len(clips_dirs)} locales')
-        for clips_dir in clips_dirs:
-            build_clip_durations_table(clips_dir)
+        globPath: str = os.path.join(SOURCE_DATASET_DIR, SOURCE_DATASET, '**', 'clips')
+        print(f"Searching clips dirs with {globPath}")
+        clips_dirs: list[str] = glob.glob(globPath, recursive=False)
+        print(f'=== Processing {len(clips_dirs)} locales (files created in data source)')
+        for inx, clips_dir in enumerate(clips_dirs):
+            # create only if file does not exists
+            if not os.path.isfile(os.path.join(clips_dir, CDUR_FN)):
+                build_clip_durations_table(clips_dir)
+            else:
+                print("Skip:", inx, '/'.join(clips_dir.split(os.sep)[-4:]))
+
 
     # Do we want to copy the .tsv files from original expanded datasets?
     if USE_SOURCE_DATASET_DIR:
@@ -374,11 +386,6 @@ def main() -> None:
             dirs_exist_ok=True,
             ignore=shutil.ignore_patterns('*.mp3')
             )
-
-    # !!! from now on we will work on destination !!!
-
-    # src_corpora_paths: "list[str]" = glob.glob(os.path.join(src_exppath, '*'), recursive=False)
-    # dst_corpora_paths: "list[str]" = glob.glob(os.path.join(dst_exppath, '*'), recursive=False)
 
     # Get total for progress display
     all_validated: "list[str]" = glob.glob(os.path.join(src_exppath, '**', 'validated.tsv'), recursive=True)
