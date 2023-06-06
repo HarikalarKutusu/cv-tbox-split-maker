@@ -1,3 +1,4 @@
 pandas
 psutil
+av
 commonvoice-utils
