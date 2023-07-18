@@ -1,4 +1,4 @@
- #!/usr/bin/env python3
+#!/usr/bin/env python3
 
 ###########################################################################
 # proposal-v1.py
@@ -40,10 +40,34 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
+import progressbar
 
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
     sys.path.append(HERE)
+# MULTIPROCESSING
+import psutil
+import multiprocessing as mp
+import threading
+
+#
+# Globals
+#
+
+class Globals():
+    TOTAL_COUNT: int = 0
+    SRC_COUNT: int = 0
+    SKIPPED_EXISTS: int = 0
+    # SKIPPED_NODATA: int = 0
+    PROCESSED_COUNT: int = 0
+    LARGE_DATASET_COUNT: int = 0
+    MEDIUM_DATASET_COUNT: int = 0
+    TINY_DATASET_COUNT: int = 0
+    BAR: progressbar.ProgressBar = progressbar.ProgressBar()
+
+g = Globals()
+PROC_COUNT: int = psutil.cpu_count(logical=True)  # Full usage
+output_lock = threading.Lock()
 
 #
 # Constants - TODO These should be arguments
@@ -153,6 +177,8 @@ def corpora_creator_v1(val_path: str, dst_path: str):
     dev_voice_max: int   = int(MAX_DEV_USER  * total_voices)
 
     # Adaptive part - if population size >= 150.000, then use sample size calculation, else use percentages given
+    is_large: bool = False
+    is_medium: bool = False
 
     if total_validated >= SAMPLE_SIZE_THRESHOLD:
         # use sample size calculation
@@ -160,6 +186,8 @@ def corpora_creator_v1(val_path: str, dst_path: str):
         test_target: int  = sample_size
         dev_target: int   = sample_size
         train_target: int = total_validated - dev_target - test_target
+        g.LARGE_DATASET_COUNT += 1
+        is_large = True
         if VERBOSE:
             print(f'!!! LARGE DATASET! - Sample sizes for TEST and DEV are recalculated as: {sample_size}')
             print(f'>>> Processing - {total_validated} validated records with {total_sentences} lower-case unique sentences from {total_voices} voices. Targeting:')
@@ -172,6 +200,8 @@ def corpora_creator_v1(val_path: str, dst_path: str):
         test_target: int  = int(TEST_PERCENTAGE / 100 * total_validated)
         dev_target: int   = int(DEV_PERCENTAGE / 100 * total_validated)
         train_target: int = total_validated - dev_target - test_target
+        g.MEDIUM_DATASET_COUNT += 1
+        is_medium = True
         if VERBOSE:
             print(f'>>> Processing - {total_validated} validated records with {total_sentences} lower-case unique sentences from {total_voices} voices. Targeting:')
             print(f'>>> TEST : {TEST_PERCENTAGE}% => {test_target} recs OR max {test_voice_max} voices')
@@ -180,7 +210,13 @@ def corpora_creator_v1(val_path: str, dst_path: str):
             # print()
 
     if total_validated < 100 or total_voices < 10:
-        print('!!! TOO LOW ON RESOURCES, SPLITTING RANDOMLY !!!')
+        g.TINY_DATASET_COUNT += 1
+        if is_large:
+            g.LARGE_DATASET_COUNT -= 1
+        if is_medium:
+            g.MEDIUM_DATASET_COUNT -= 1
+        if VERBOSE:
+            print('!!! TOO LOW ON RESOURCES, SPLITTING RANDOMLY !!!')
         # Remove extra columns
         test_df: pd.DataFrame   = validated_df[ : test_target]
         dev_df: pd.DataFrame    = validated_df[test_target+1 : test_target + dev_target]
@@ -190,8 +226,6 @@ def corpora_creator_v1(val_path: str, dst_path: str):
         df_write(dev_df, os.path.join(dst_path, 'dev.tsv'))
         df_write(train_df, os.path.join(dst_path, 'train.tsv'))
         return
-
-
 
     #
     # STEP-1 : First run to predict slices for splits
@@ -372,50 +406,67 @@ def main() -> None:
 
     # Get total for progress display
     all_validated: "list[str]" = glob.glob(os.path.join(src_exppath, '**', 'validated.tsv'), recursive=True)
-    print(f'Re-splitting for {len(all_validated)} corpora... Wait for final structure is formed...')
-    print()   # extra line is for progress line
 
     # For each corpus
-    cnt: int = 0 # counter of corpora done
-    cnt_skipped: int = 0    # count of corpora skipped
     start_time: datetime = datetime.now()
 
-    cnt_total: int = len(all_validated)
+    # clean unneeded/skipped
+    final_list: list[str] = []
+    if FORCE_CREATE:
+        final_list = all_validated
+    else:
+        for p in all_validated:
+            src_corpus_dir: str = os.path.split(p)[0]
+            lc: str = os.path.split(src_corpus_dir)[1]
+            ver: str = os.path.split(os.path.split(src_corpus_dir)[0])[1]
+            dst_corpus_dir: str = os.path.join(dst_exppath, ver, lc)
+            if os.path.isfile(os.path.join(dst_corpus_dir, 'train.tsv')):
+                g.SKIPPED_EXISTS += 1
+            else:
+                final_list.append(p)
 
-    for val_path in all_validated:
+    g.TOTAL_COUNT = len(all_validated)
+    g.SRC_COUNT = len(final_list)
+
+    print(f'Re-splitting for {g.SRC_COUNT} out of {g.TOTAL_COUNT} corpora in {PROC_COUNT} processes.')
+    print(f'Skipping {g.SKIPPED_EXISTS} as they already exist.')
+
+    bar: progressbar.ProgressBar = progressbar.ProgressBar(max_value=g.SRC_COUNT)
+    bar.start()
+
+    for val_path in final_list:
         src_corpus_dir: str = os.path.split(val_path)[0]
         lc: str = os.path.split(src_corpus_dir)[1]
         ver: str = os.path.split(os.path.split(src_corpus_dir)[0])[1]
         dst_corpus_dir: str = os.path.join(dst_exppath, ver, lc)
 
-        cnt += 1
+        g.PROCESSED_COUNT += 1
         if VERBOSE:
-            print(f'\n=== Processing {cnt}/{cnt_total} => {ver} - {lc}\n')
+            print(f'\n=== Processing {g.PROCESSED_COUNT}/{g.SRC_COUNT} => {ver} - {lc}\n')
         else:
             print('\033[F' + ' ' * 80)
-            print(f'\033[FProcessing {cnt}/{cnt_total} => {ver} - {lc}')
+            print(f'\033[FProcessing {g.PROCESSED_COUNT}/{g.SRC_COUNT} => {ver} - {lc}')
         
-        if not FORCE_CREATE and os.path.isfile(os.path.join(dst_corpus_dir, 'train.tsv')):
-            # Already there and is not forced to recreate, so skip
-            cnt_skipped += 1
-        else:
-            os.makedirs(dst_corpus_dir, exist_ok=True)
-            corpora_creator_v1(val_path=val_path, dst_path=dst_corpus_dir)
-            print()
-
+        os.makedirs(dst_corpus_dir, exist_ok=True)
+        corpora_creator_v1(val_path=val_path, dst_path=dst_corpus_dir)
+        bar.update(g.PROCESSED_COUNT)
+    # end for
+    bar.finish()
 
     finish_time: datetime = datetime.now()
     process_timedelta: timedelta = finish_time - start_time
     process_seconds: float = process_timedelta.total_seconds()
-    avg_seconds: float = process_seconds/cnt_total
-    cnt_processed: int = cnt-cnt_skipped
+    avg_seconds: float = -1
+    avg_seconds_actual: float = -1
     avg_seconds_new: float = -1
-    if cnt_processed > 0:
-        avg_seconds_new: float = process_seconds/cnt_processed
+    if g.SRC_COUNT > 0:
+        avg_seconds = process_seconds/g.SRC_COUNT
+    if g.PROCESSED_COUNT > 0:
+        avg_seconds_actual = process_seconds/g.PROCESSED_COUNT
     print('\n' + '-' * 80)
-    print(f'Finished processing of {cnt_total} corpora in {str(process_timedelta)}, avg duration {float("{:.3f}".format(avg_seconds))}')
-    print(f'Processed: {cnt}, Skipped: {cnt_skipped}, New: {cnt_processed}')
-    if cnt_processed > 0:
-        print(f'Avg. time new split creation: {float("{:.3f}".format(avg_seconds_new))}')
+    print(f'Finished processing of {g.TOTAL_COUNT} corpora in {str(process_timedelta)}')
+    print(f'Checked: {g.SRC_COUNT}, Actual: {g.PROCESSED_COUNT}')
+    print(f'Dataset Sizes - TINY: {g.TINY_DATASET_COUNT} MEDIUM: {g.MEDIUM_DATASET_COUNT} LARGE: {g.LARGE_DATASET_COUNT}')
+    print(f'AVG in CHECKED {float("{:.3f}".format(avg_seconds))} secs, AVG in ACTUAL {float("{:.3f}".format(avg_seconds_actual))} secs, ')
 
 main()
