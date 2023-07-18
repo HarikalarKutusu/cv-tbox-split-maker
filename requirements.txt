@@ -1,4 +1,6 @@
 pandas >= 2.0.0
 psutil
+progressbar2
 av
 commonvoice-utils
+git+https://github.com/common-voice/CorporaCreator.git@master
