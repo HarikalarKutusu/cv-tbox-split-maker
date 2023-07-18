@@ -24,14 +24,39 @@
 import sys, os, shutil, glob, csv
 from pathlib import Path
 from datetime import datetime, timedelta
+from typing import Any, Generator, Iterable
 import numpy as np
 import pandas as pd
+import progressbar
 
 import corporacreator
+
+# MULTIPROCESSING
+import psutil
+import multiprocessing as mp
+import threading
+
 
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
     sys.path.append(HERE)
+
+#
+# Globals
+#
+
+class Globals():
+    TOTAL_COUNT: int = 0
+    SRC_COUNT: int = 0
+    SKIPPED_EXISTS: int = 0
+    SKIPPED_NODATA: int = 0
+    PROCESSED_COUNT: int = 0
+    BAR: progressbar.ProgressBar = progressbar.ProgressBar()
+
+g = Globals()
+PROC_COUNT: int = psutil.cpu_count(logical=True)  # Full usage
+output_lock = threading.Lock()
+
 
 #
 # Constants - TODO These should be arguments
@@ -207,11 +232,20 @@ class LocalCorpus:
         )
 
 #
+# PROCESS
 # Handle one split creation, this is where calculations happen
 #
 
-def corpora_creator_original(lc: str, val_path: str, dst_path: str, duplicate_sentences: int) -> bool:
+# def corpora_creator_original(lc: str, val_path: str, dst_path: str, duplicate_sentences: int) -> bool:
+def corpora_creator_original(val_path: str) -> bool:
     """Processes validated.tsv and create new train, dev, test splits"""
+    dst_exppath: str = os.path.join(HERE, 'experiments', DST_ALGO_DIR)
+    results: list[bool] = []
+
+    src_corpus_dir: str = os.path.split(val_path)[0]
+    lc: str = os.path.split(src_corpus_dir)[1]
+    ver: str = os.path.split(os.path.split(src_corpus_dir)[0])[1]
+    dst_corpus_dir: str = os.path.join(dst_exppath, ver, lc)
 
     # Assume result false
     res: bool = False
@@ -228,7 +262,7 @@ def corpora_creator_original(lc: str, val_path: str, dst_path: str, duplicate_se
 
         # handle corpus
         args = corporacreator.parse_args(
-            ['-d', temp_path, '-f', val_path, '-s', str(duplicate_sentences)]
+            ['-d', temp_path, '-f', val_path, '-s', str(DUPLICATE_SENTENCE_COUNT)]
             )
         corpus: LocalCorpus = LocalCorpus(args, lc, df_corpus)
         corpus.validated = df_corpus
@@ -236,15 +270,16 @@ def corpora_creator_original(lc: str, val_path: str, dst_path: str, duplicate_se
         corpus.save(temp_path)
 
         # move required files to destination
-        os.makedirs(dst_path, exist_ok=True)
-        shutil.move(os.path.join(temp_path, lc, 'train.tsv'), dst_path)
-        shutil.move(os.path.join(temp_path, lc, 'dev.tsv'), dst_path)
-        shutil.move(os.path.join(temp_path, lc, 'test.tsv'), dst_path)
-        shutil.rmtree(temp_path)
+        os.makedirs(dst_corpus_dir, exist_ok=True)
+        shutil.move(os.path.join(temp_path, lc, 'train.tsv'), dst_corpus_dir)
+        shutil.move(os.path.join(temp_path, lc, 'dev.tsv'), dst_corpus_dir)
+        shutil.move(os.path.join(temp_path, lc, 'test.tsv'), dst_corpus_dir)
+        shutil.rmtree(os.path.join(temp_path, lc))
 
         res = True
-    
+
     return res
+
 
 #
 # Main loop for experiments-versions-locales
@@ -253,72 +288,68 @@ def corpora_creator_original(lc: str, val_path: str, dst_path: str, duplicate_se
 def main() -> None:
     print('=== Original Corpora Creator with -s 99 option for Common Voice Datasets ===')
 
-    # Copy source experiment tree to destination experiment
+    # Paths
     experiments_path: str = os.path.join(HERE, 'experiments')
     src_exppath: str = os.path.join(experiments_path, SRC_ALGO_DIR)
     dst_exppath: str = os.path.join(experiments_path, DST_ALGO_DIR)
-    # shutil.copytree(
-    #     src=src_exppath,
-    #     dst=dst_exppath,
-    #     dirs_exist_ok=True,
-    #     ignore=shutil.ignore_patterns('*.*')
-    #     )
-
-    # !!! from now on we will work on destination !!!
-
-    # src_corpora_paths: "list[str]" = glob.glob(os.path.join(src_exppath, '*'), recursive=False)
-    # dst_corpora_paths: "list[str]" = glob.glob(os.path.join(dst_exppath, '*'), recursive=False)
 
     # Get total for progress display
     all_validated: "list[str]" = glob.glob(os.path.join(src_exppath, '**', 'validated.tsv'), recursive=True)
-    print(f'Re-splitting for {len(all_validated)} corpora... Wait for final structure is formed...')
-    print()   # extra line is for progress line
 
     # For each corpus
-    cnt: int = 0            # count of corpora checked
-    cnt_skipped: int = 0    # count of corpora skipped
     start_time: datetime = datetime.now()
+    final_list: list[str] = []
 
-    cnt_total: int = len(all_validated)
+    # clean unneeded/skipped
+    if FORCE_CREATE:
+        final_list = all_validated
+    else:
+        for p in all_validated:
+            src_corpus_dir: str = os.path.split(p)[0]
+            lc: str = os.path.split(src_corpus_dir)[1]
+            ver: str = os.path.split(os.path.split(src_corpus_dir)[0])[1]
+            dst_corpus_dir: str = os.path.join(dst_exppath, ver, lc)
+            if os.path.isfile(os.path.join(dst_corpus_dir, 'train.tsv')):
+                g.SKIPPED_EXISTS += 1
+            else:
+                final_list.append(p)
 
-    for val_path in all_validated:
-        src_corpus_dir: str = os.path.split(val_path)[0]
-        lc: str = os.path.split(src_corpus_dir)[1]
-        ver: str = os.path.split(os.path.split(src_corpus_dir)[0])[1]
-        dst_corpus_dir: str = os.path.join(dst_exppath, ver, lc)
+    g.TOTAL_COUNT = len(all_validated)
+    g.SRC_COUNT = len(final_list)
 
-        cnt += 1
-        if VERBOSE:
-            print(f'\n=== Processing {cnt}/{cnt_total} => {ver} - {lc}')
+    # schedule mp
+    print(f'Re-splitting for {g.SRC_COUNT} out of {g.TOTAL_COUNT} corpora in {PROC_COUNT} processes.')
+    print(f'Skipping {g.SKIPPED_EXISTS} as they already exist.')
+    # print()   # extra line is for progress line
+
+    # bar: progressbar.ProgressBar = progressbar.ProgressBar(max_value=g.SRC_COUNT, prefix="Dataset ")
+    # bar.start()
+
+    with mp.Pool(PROC_COUNT) as pool:
+        results: list[bool] = pool.map(corpora_creator_original, final_list)
+
+    for res in results:
+        if res:
+            g.PROCESSED_COUNT += 1
         else:
-            print('\033[F' + ' ' * 80)
-            print(f'\033[FProcessing {cnt}/{cnt_total} => {ver} - {lc}')
+            g.SKIPPED_NODATA += 1
 
-        if not FORCE_CREATE and os.path.isfile(os.path.join(dst_corpus_dir, 'train.tsv')):
-            # Already there and is not forced to recreate, so skip
-            cnt_skipped += 1
-        else:
-            if not corpora_creator_original( # df might be empty, thus returns false
-                    lc=lc,
-                    val_path=val_path,
-                    dst_path=dst_corpus_dir,
-                    duplicate_sentences=DUPLICATE_SENTENCE_COUNT
-                    ):
-                cnt_skipped += 1
-            print()
+    # end for
+    # bar.finish()
 
     finish_time: datetime = datetime.now()
     process_timedelta: timedelta = finish_time - start_time
     process_seconds: float = process_timedelta.total_seconds()
-    avg_seconds: float = process_seconds/cnt_total
-    cnt_processed: int = cnt-cnt_skipped
-    avg_seconds_new: float = -1
-    if cnt_processed > 0:
-        avg_seconds_new = process_seconds/cnt_processed
+    avg_seconds: float = -1
+    avg_seconds_actual: float = -1
+    if g.SRC_COUNT > 0:
+        avg_seconds = process_seconds/g.SRC_COUNT
+    if g.PROCESSED_COUNT > 0:
+        avg_seconds_actual = process_seconds/g.PROCESSED_COUNT
     print('\n' + '-' * 80)
-    print(f'Finished processing of {cnt_total} corpora in {str(process_timedelta)} secs, avg duration {float("{:.3f}".format(avg_seconds))} secs')
-    print(f'Processed: {cnt}, Skipped: {cnt_skipped}, New: {cnt_processed}')
-    if cnt_processed > 0:
-        print(f'Avg. time new split creation: {float("{:.3f}".format(avg_seconds_new))} secs')
+    print(f'Finished processing of {g.TOTAL_COUNT} corpora in {str(process_timedelta)} secs')
+    print(f'Checked: {g.SRC_COUNT}, Skipped (no-data): {g.SKIPPED_NODATA}, Actual: {g.PROCESSED_COUNT}')
+    print(f'AVG in CHECKED {float("{:.3f}".format(avg_seconds))} secs, AVG in ACTUAL {float("{:.3f}".format(avg_seconds_actual))} secs, ')
 
-main()
+if __name__ == "__main__":
+    main()
