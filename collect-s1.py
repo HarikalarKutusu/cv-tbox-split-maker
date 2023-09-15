@@ -53,6 +53,6 @@ def main():
 
 if __name__ == "__main__":
     # TODO : use command line args
-    args_src_dir: str = "m:\\DATASETS\\cv\\cv-corpus-14.0-2023-06-23"
+    args_src_dir: str = "m:\\DATASETS\\cv\\cv-corpus-15.0-2023-09-08"
 
     main()
