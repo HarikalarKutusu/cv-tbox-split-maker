@@ -1,6 +1,6 @@
-pandas >= 2.0.0
+pandas
 psutil
-progressbar2
+progressbar2 == 4.3b0
 av
-commonvoice-utils
+git+https://github.com/ftyers/commonvoice-utils.git@main
 git+https://github.com/common-voice/CorporaCreator.git@master
