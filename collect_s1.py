@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-
-"""
+"""cv-tbox Diversity Check / Split Maker - Collect Default Splits"""
 ###########################################################################
 # collect_s1.py
 #
@@ -14,7 +13,6 @@
 # [github]
 # [copyright]
 ###########################################################################
-"""
 
 # Standard Lib
 import os
@@ -25,6 +23,8 @@ from datetime import datetime
 
 # External Dependencies
 import progressbar
+
+# Module
 
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
