@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-""" A version of v1 algorithm which produces train & dev, where external dataset like Fleurs is used as test """
-
+"""
+cv-tbox Diversity Check / Split Maker
+A version of v1 algorithm which produces train & dev, where external dataset like Fleurs is used as test
+"""
 ###########################################################################
 # proposal-vx.py
 #
@@ -25,9 +27,13 @@ import glob
 import csv
 from datetime import datetime, timedelta
 
+# External dependencies
 import pandas as pd
 
+# Module
 from languages import LANGUAGES_ALLOWED
+from lib import df_read, df_write
+import conf
 
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
@@ -51,58 +57,9 @@ DEV_PERCENTAGE: float = 5.0
 
 MAX_DEV_USER: float = 0.50
 
-
-# Program parameters
-
-# If true, report all on different lines, else show only generated
-VERBOSE: bool = False
-# If true, fail if source is not found, else skip it
-FAIL_ON_NOT_FOUND: bool = True
-# If true, regenerate the splits even if they exist
-FORCE_CREATE: bool = False
-
-
 cnt_processed: int = 0  # counter of corpora processed
 cnt_skipped: int = 0  # count of corpora skipped
 num_total: int = 0  # total number of datasets
-
-
-#
-# DataFrame file read-write
-#
-
-
-def df_read(fpath: str) -> pd.DataFrame:
-    """Read a tsv file into a dataframe"""
-    if not os.path.isfile(fpath):
-        print(f"FATAL: File {fpath} cannot be located!")
-        if FAIL_ON_NOT_FOUND:
-            sys.exit(1)
-
-    df: pd.DataFrame = pd.read_csv(
-        fpath,
-        sep="\t",
-        parse_dates=False,
-        engine="python",
-        encoding="utf-8",
-        on_bad_lines="skip",
-        quotechar='"',
-        quoting=csv.QUOTE_NONE,
-    )
-    return df
-
-
-def df_write(df: pd.DataFrame, fpath: str) -> None:
-    """Write dataframe to a tsv file"""
-    df.to_csv(
-        fpath,
-        header=True,
-        index=False,
-        encoding="utf-8",
-        sep="\t",
-        escapechar="\\",
-        quoting=csv.QUOTE_NONE,
-    )
 
 
 #
@@ -193,7 +150,7 @@ def corpora_creator_vx(val_path: str, dst_path: str):
     # Use given percentages!
     dev_target: int = int(DEV_PERCENTAGE / 100 * total_validated)
     train_target: int = total_validated - dev_target
-    if VERBOSE:
+    if conf.VERBOSE:
         print(
             f">>> Processing - {total_validated} validated records with {total_sentences} lower-case unique sentences from {total_voices} voices. Targeting:"
         )
@@ -229,7 +186,7 @@ def corpora_creator_vx(val_path: str, dst_path: str):
     )  # use cumulative column to get list of user recordings to match the amount
     # If sliced records are more than dev_voice_max we need to re-slice
     if dev_slice.shape[0] > dev_voice_max:
-        if VERBOSE:
+        if conf.VERBOSE:
             print("dev-Re-sliced because max voices exceeded")
         dev_slice: pd.DataFrame = voices_df[
             0:dev_voice_max
@@ -244,7 +201,7 @@ def corpora_creator_vx(val_path: str, dst_path: str):
         drop=True
     )  # Get the rest
 
-    # if VERBOSE:
+    # if conf.VERBOSE:
     #     print(f'VOICES: TEST={test_slice.shape[0]}/{test_voice_max}   DEV={dev_slice.shape[0]}/{dev_voice_max}   TRAIN={train_slice.shape[0]} TOTAL={train_slice.shape[0] + dev_slice.shape[0] + test_slice.shape[0]}/{total_voices}')
     #     print(f'ACTUAL: TEST={actual_test_target}/{test_target} DEV={actual_dev_target - actual_test_target}/{dev_target}')
 
@@ -280,7 +237,7 @@ def corpora_creator_vx(val_path: str, dst_path: str):
                 limit_reached = True
             # print('...step...', inx, delta_train, delta_dev)
         # here we know
-        if VERBOSE:
+        if conf.VERBOSE:
             print(
                 f"SWAP DEV-TRAIN {inx+1} VOICES, FOR {delta_train - delta_dev} RECORDINGS TO FILL {dev_missing} MISSING RECS IN DEV SPLIT"
             )
@@ -321,7 +278,7 @@ def corpora_creator_vx(val_path: str, dst_path: str):
         dev_df["s_enum"].unique().tolist()
     )  # get a list of unique voice enum in test set
     dev_recs: int = dev_df.shape[0]
-    # if VERBOSE:
+    # if conf.VERBOSE:
     #     print(f'--> DEV   split now has {dev_recs} records with {total_dev_sentences} distinct sentences from {total_dev_voices} distinct voices (from {total_voices})')
 
     # Rest will be in TRAIN
@@ -336,7 +293,7 @@ def corpora_creator_vx(val_path: str, dst_path: str):
         train_df["s_enum"].unique().tolist()
     )  # get a list of unique voice enum in test set
     train_recs: int = train_df.shape[0]
-    if VERBOSE:
+    if conf.VERBOSE:
         # print(f'--> TRAIN split now has {train_recs} records with {total_train_sentences} distinct sentences from {total_train_voices} distinct voices (from {total_voices})')
         tot_v: int = total_train_voices + total_dev_voices
         tot_r: int = train_recs + dev_recs
@@ -411,7 +368,7 @@ def main() -> None:
         dst_corpus_dir: str = os.path.join(dst_exppath, ver, lc)
 
         cnt_processed += 1
-        if VERBOSE:
+        if conf.VERBOSE:
             print(f"\n=== Processing {cnt_processed}/{num_total} => {ver} - {lc}\n")
         else:
             print("\033[F" + " " * 80)
@@ -421,7 +378,7 @@ def main() -> None:
             # We need it to be among allowed languages
             print(f"!!! SKIP UNSUPPORTED: [{lc}]")
             cnt_skipped += 1
-        elif not FORCE_CREATE and os.path.isfile(
+        elif not conf.FORCE_CREATE and os.path.isfile(
             os.path.join(dst_corpus_dir, "train.tsv")
         ):
             # Already there and is not forced to recreate, so skip
