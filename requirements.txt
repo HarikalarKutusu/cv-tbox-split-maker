@@ -1,6 +1,6 @@
 pandas
 psutil
-progressbar2 == 4.3b0
+tqdm
 av
 git+https://github.com/ftyers/commonvoice-utils.git@main
 git+https://github.com/common-voice/CorporaCreator.git@master
