@@ -13,7 +13,7 @@ This tooling will be part of Common Voice ToolBox, released separately. It will 
 - You want to use different alternative splitting strategies and want to compare it with the default splits or other strategies, but are they diverse enough?
 - Or, all of the above...
 
-The process of doing these with L languages, V versions and S splitting strategies (+three splitting algorithms in each) means repeated processing of 3*L*V*S splits.
+The process of doing these with L languages, V versions and S splitting strategies (+three splitting algorithms in each) means repeated processing of 3*L*V\*S splits.
 
 This is where this tool comes in. You just put your data in directories and feed them to scripts. The basic measures are compiled into a tsv file which you can process with your own scripts or other tools. We also included an MS Excel file as an analysis frontend to this data.
 
@@ -48,7 +48,9 @@ The data we use is huge and not suited for github. We used the following:
 
 - s1: Default splits in datasets, created by the current Common Voice CorporaCreator (-s 1 default option)
 - s99: Alternative splits created by the current Common Voice CorporaCreator with -s 99 option, taking up to 99 recordings per sentence, i.e. nearly the whole dataset.
-- v1: Alternative split created by "algorithm-v1.py". This is a 80-10-10% (train-dev-test) splitting with 25-25-50% voice diversity (nearly) ensured. This algorithm has been suggested to Common Voice for being used as default splitting algorithm, with a report including a detailed analysis and some training results.
+- v1: ("Voice First") Alternative split created by "algorithm-v1.py". This is a 80-10-10% (train-dev-test) splitting with 25-25-50% voice diversity (nearly) ensured. This algorithm has been suggested to Common Voice Project for being used as default splitting algorithm, with a report including a detailed analysis and some training results.
+- vw: ("Voice first for Whisper") A version of v1 for better OpenAI Whisper fine-tuning, with 90-5-5% splits, keeping 25-25-50% diversity (only available for Whisper languages).
+- vx: ("Voice first for eXternal test") A version of v1 with 95-5-0% splits and 50-50-0% diversity, so no test split, where you can test your model against other datasets like Fleurs or Voxpopuli (only available for Fleurs & Voxpopuli languages).
 
 We will be releasing these data in the future, there are gigabytes of data...
 
@@ -118,7 +120,7 @@ python3 tbox_split_maker <--split_strategy|--ss <strategy_code> [<parameter>] > 
 
 **Currently supported strategies:**
 
---split_strategy cc <N>
+--split_strategy cc [N]
 
 Run Common Voice's Corpora Creator with alternative recordings per sentence setting. By default, this is 1, meaning there is 1 recording per sentence in the final splits, even if different users might record sentences multiple times. Although this setting is meaningful to prevent sentence bias, it might be desirable to have sentences recorded by different voices/genders/ages/accents so that your model gets better on alternatives. Also, especially with low resource languages, the default setting drops the training split size to a small fraction of what's available.
 
