@@ -22,9 +22,13 @@ import shutil
 from datetime import datetime
 
 # External Dependencies
-import progressbar
+from tqdm import tqdm
 
 # Module
+import conf
+from lib import dec3
+
+# Globals
 
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
@@ -37,12 +41,10 @@ def main() -> None:
     src_locale_dirs: list[str] = glob.glob(os.path.join(args_src_dir, "*"))
     total_cnt: int = len(src_locale_dirs)
     print(f"Copying .TSV files from {total_cnt} locales")
-    bar: progressbar.ProgressBar = progressbar.ProgressBar(max_value=total_cnt)
+    pbar = tqdm(total=total_cnt, unit=" Dataset")
     cnt: int = 0
     start_time: datetime = datetime.now()
-    bar.start()
     for src_lc_dir in src_locale_dirs:
-        bar.update(cnt)
         cnt += 1
         if os.path.isdir(src_lc_dir):
             lc: str = os.path.split(src_lc_dir)[-1]
@@ -50,16 +52,18 @@ def main() -> None:
             os.makedirs(dst_dir, exist_ok=True)
             files: list[str] = glob.glob(os.path.join(src_lc_dir, "*.tsv"))
             for f in files:
-                shutil.copy(f, dst_dir)
+                shutil.copy2(f, dst_dir)
+        pbar.update()
     # finalize
-    bar.finish()
+    pbar.close()
     end_time: datetime = datetime.now()
     seconds: int = (end_time - start_time).seconds
-    print(f"Finished in {seconds} sec - Avg={seconds/total_cnt} sec/locale")
+    print(f"Finished in {seconds} sec - Avg={dec3(seconds/total_cnt)} sec/locale")
 
 
 if __name__ == "__main__":
     # [TODO] : use command line args
-    args_src_dir: str = "m:\\DATASETS\\cv\\cv-corpus-15.0-2023-09-08"
+    # args_src_dir: str = "m:\\DATASETS\\cv\\cv-corpus-16.0-2023-12-06"
+    args_src_dir: str = os.path.join(conf.CV_DATASET_BASE_DIR, conf.CV_DATASET_VERSION)
 
     main()
