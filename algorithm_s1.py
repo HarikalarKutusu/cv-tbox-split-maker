@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-""" Standard Common Voice CorporaCreator algorithm which is used to create the default splits """
-
+"""
+cv-tbox Diversity Check / Split Maker
+Standard Common Voice CorporaCreator algorithm which is used to create the default splits
+"""
 ###########################################################################
 # algorithm-s1.py
 #
@@ -23,11 +25,11 @@
 ###########################################################################
 
 # Standard Lib
+from argparse import Namespace
 import os
 import sys
 import shutil
 import glob
-import csv
 from datetime import datetime, timedelta
 from typing import Any
 import logging
@@ -37,242 +39,37 @@ import pandas as pd
 import av
 import corporacreator
 
-# Get rid of warnings
+# Module
+import conf
+from lib import Globals, AlgorithmSpecs, LocalCorpus, final_report
+from lib import df_read, df_write, dec3
 
+# Get rid of warnings
 logging.getLogger("libav").setLevel(logging.ERROR)
 
+# Globals
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
     sys.path.append(HERE)
+
+g = Globals()
+aspecs = AlgorithmSpecs(
+    src_algo_dir="s1", dst_algo_dir="s1", duplicate_sentence_count=1
+)
 
 #
 # Constants - TODO These should be arguments
 #
 
-DUPLICATE_SENTENCE_COUNT: int = 1
-
 # Directories
-SRC_ALGO_DIR: str = "s1"
-DST_ALGO_DIR: str = "s1"
-
-SOURCE_DATASET_DIR: str = os.path.normpath("M:\\DATASETS\\CV")
-SOURCE_DATASET: str = "cv-corpus-13.0-2023-03-09"
 USE_SOURCE_DATASET_DIR: bool = True
 DO_CALC_CLIP_DURATIONS: bool = True
 
-# Program parameters
-VERBOSE: bool = (
-    False  # If true, report all on different lines, else show only generated
-)
-FAIL_ON_NOT_FOUND: bool = True  # If true, fail if source is not found, else skip it
-FORCE_CREATE: bool = False  # If true, regenerate the splits even if they exist
-
 # DF related (for clip durations)
-CDUR_COLS: list[str] = ["clip", "duration"]
+CDUR_COLS: list[str] = ["clip", "duration[ms]"]
 CDUR_FN: str = "$clip_durations.tsv"
 CDUR_ERR_COLS: list[str] = ["clip", "error"]
 CDUR_ERR_FN: str = "$clip_durations_errors.tsv"
-
-#
-# DataFrame file read-write
-#
-
-
-def df_read(fpath: str) -> pd.DataFrame:
-    """Read a tsv file into a dataframe"""
-    if not os.path.isfile(fpath):
-        print(f"FATAL: File {fpath} cannot be located!")
-        if FAIL_ON_NOT_FOUND:
-            sys.exit(1)
-
-    df: pd.DataFrame = pd.read_csv(
-        fpath,
-        sep="\t",
-        parse_dates=False,
-        engine="python",
-        encoding="utf-8",
-        on_bad_lines="skip",
-        quotechar='"',
-        quoting=csv.QUOTE_NONE,
-    )
-    return df
-
-
-def df_write(df: pd.DataFrame, fpath: str) -> None:
-    """Write dataframe to a tsv file"""
-    df.to_csv(
-        fpath,
-        header=True,
-        index=False,
-        encoding="utf-8",
-        sep="\t",
-        escapechar="\\",
-        quoting=csv.QUOTE_NONE,
-    )
-
-
-#
-# Adapted from original Corpora Creator - removed unneeded features
-# - Removed logger
-# - No need to re-partition (we already have validated)
-# - No need to preprocess (s1 already preprocessed the data)
-# - Create only train, dev, test
-#
-
-
-#
-# Sample Size Calculation, taken from CorporaCreaotr repo (statistics.py)
-#
-def calc_sample_size(population_size: int) -> float:
-    """Calculates the sample size.
-
-    Calculates the sample size required to draw from a population size `population_size`
-    with a confidence level of 99% and a margin of error of 1%.
-
-    Args:
-    population_size (int): The population size to draw from.
-    """
-    margin_of_error: float = 0.01
-    fraction_picking: float = 0.50
-    z_score: float = 2.58  # Corresponds to confidence level 99%
-    numerator: float = (z_score**2 * fraction_picking * (1 - fraction_picking)) / (
-        margin_of_error**2
-    )
-    denominator: float = 1 + (
-        z_score**2 * fraction_picking * (1 - fraction_picking)
-    ) / (margin_of_error**2 * population_size)
-    return numerator / denominator
-
-
-class LocalCorpus:
-    """Corpus representing a Common Voice datasets for a given locale.
-    Args:
-      args ([str]): Command line parameters as list of strings
-      locale (str): Locale this :class:`corporacreator.Corpus` represents
-      corpus_data (:class:`pandas.DataFrame`): `pandas.DataFrame` Containing the corpus data
-    Attributes:
-        args ([str]): Command line parameters as list of strings
-        locale (str): Locale of this :class:`corporacreator.Corpus`
-        corpus_data (:class:`pandas.DataFrame`): `pandas.DataFrame` Containing the corpus data
-    """
-
-    def __init__(self, args, locale, corpus_data):
-        self.args = args
-        self.locale = locale
-        self.corpus_data = corpus_data
-        # self.validated = None
-
-    def create(self):
-        """Creates a :class:`corporacreator.Corpus` for `self.locale`."""
-        self._post_process_valid_data()
-
-    def _post_process_valid_data(self):
-        # Remove duplicate sentences while maintaining maximal user diversity at the frame's start
-        # [TODO]: Make addition of user_sentence_count cleaner
-        speaker_counts: pd.DataFrame = self.validated["client_id"].value_counts()
-        speaker_counts = speaker_counts.to_frame().reset_index()
-        speaker_counts.columns = ["client_id", "user_sentence_count"]
-        self.validated = self.validated.join(
-            speaker_counts.set_index("client_id"), on="client_id"
-        )
-        self.validated = self.validated.sort_values(
-            ["user_sentence_count", "client_id"]
-        )
-        validated = self.validated.groupby("sentence").head(
-            self.args.duplicate_sentence_count
-        )
-
-        validated = validated.sort_values(
-            ["user_sentence_count", "client_id"], ascending=False
-        )
-        validated = validated.drop(columns="user_sentence_count")
-        self.validated = self.validated.drop(columns="user_sentence_count")
-
-        train = pd.DataFrame(columns=validated.columns)
-        dev = pd.DataFrame(columns=validated.columns)
-        test = pd.DataFrame(columns=validated.columns)
-
-        train_size = dev_size = test_size = 0
-
-        if len(validated) > 0:
-            # Determine train, dev, and test sizes
-            train_size, dev_size, test_size = self._calculate_data_set_sizes(
-                len(validated)
-            )
-            # Split into train, dev, and test datasets
-            continous_client_index, uniques = pd.factorize(validated["client_id"])
-            validated["continous_client_index"] = continous_client_index
-
-            for i in range(max(continous_client_index), -1, -1):
-                if (
-                    len(test) + len(validated[validated["continous_client_index"] == i])
-                    <= test_size
-                ):
-                    test = pd.concat(
-                        [test, validated[validated["continous_client_index"] == i]],
-                        sort=False,
-                    )
-                elif (
-                    len(dev) + len(validated[validated["continous_client_index"] == i])
-                    <= dev_size
-                ):
-                    dev = pd.concat(
-                        [dev, validated[validated["continous_client_index"] == i]],
-                        sort=False,
-                    )
-                else:
-                    train = pd.concat(
-                        [train, validated[validated["continous_client_index"] == i]],
-                        sort=False,
-                    )
-
-        self.train = train.drop(columns="continous_client_index", errors="ignore")
-        self.dev = dev.drop(columns="continous_client_index", errors="ignore")
-        self.test = test[:train_size].drop(
-            columns="continous_client_index", errors="ignore"
-        )
-
-    def _calculate_data_set_sizes(self, total_size):
-        # Find maximum size for the training data set in accord with sample theory
-        train_size = total_size
-        dev_size = test_size = 0
-        for train_size in range(total_size, 0, -1):
-            # calculated_sample_size = int(corporacreator.sample_size(train_size))
-            calculated_sample_size = int(calc_sample_size(train_size))
-            if 2 * calculated_sample_size + train_size <= total_size:
-                dev_size = calculated_sample_size
-                test_size = calculated_sample_size
-                break
-        return train_size, dev_size, test_size
-
-    def save(self, directory):
-        """Saves this :class:`corporacreator.Corpus` in `directory`.
-        Args:
-          directory (str): Directory into which this `corporacreator.Corpus` is saved.
-        """
-        directory = os.path.join(directory, self.locale)
-        if not os.path.exists(directory):
-            os.mkdir(directory)
-        datasets = ["train", "dev", "test"]
-
-        # _logger.debug("Saving %s corpora..." % self.locale)
-        for dataset in datasets:
-            self._save(directory, dataset)
-        # _logger.debug("Saved %s corpora." % self.locale)
-
-    def _save(self, directory, dataset):
-        path = os.path.join(directory, dataset + ".tsv")
-
-        dataframe = getattr(self, dataset)
-        dataframe.to_csv(
-            path,
-            sep="\t",
-            header=True,
-            index=False,
-            encoding="utf-8",
-            escapechar="\\",
-            quoting=csv.QUOTE_NONE,
-        )
 
 
 #
@@ -299,11 +96,10 @@ def corpora_creator_original(
         os.makedirs(temp_path, exist_ok=True)
 
         # handle corpus
-        args = corporacreator.parse_args(
+        args: Namespace = corporacreator.parse_args(
             ["-d", temp_path, "-f", val_path, "-s", str(duplicate_sentences)]
         )
         corpus: LocalCorpus = LocalCorpus(args, lc, df_corpus)
-        corpus.validated = df_corpus
         corpus.create()
         corpus.save(temp_path)
 
@@ -324,6 +120,10 @@ def corpora_creator_original(
 #
 # Main Loop for Clips
 def build_clip_durations_table(srcdir):
+    """
+    Creates clip durations table from audio files in a directory.
+    Only called when it is not allready supplied.
+    """
     start: datetime = datetime.now()
     # get list
     mp3list: list[str] = glob.glob(os.path.join(srcdir, "*.mp3"))
@@ -355,15 +155,16 @@ def build_clip_durations_table(srcdir):
             skipped += 1
             data_err.append([os.path.split(fn)[-1], "zero_filesize"])
             continue  # skip if filesize is 0
-        else:
-            err: bool = False
-            try:
-                a = av.open(fn)
-            except:
-                print(f"ERROR: During opening - {fn}")
-                data_err.append([os.path.split(fn)[-1], "could_not_open"])
-                skipped += 1
-                err: bool = True
+
+        err: bool = False
+        try:
+            a = av.open(fn)
+        except ValueError as e:
+            print(f"ERROR: During opening - {fn}")
+            data_err.append([os.path.split(fn)[-1], "could_not_open"])
+            skipped += 1
+            err: bool = True
+
         if not err and a:
             file_duration: float = (a.duration) / 1000000
             total_dur += file_duration
@@ -403,55 +204,62 @@ def build_clip_durations_table(srcdir):
 #
 
 
+def handle_clip_durations():
+    """Refresh cklip durations if they do not exist"""
+    print("=== REFRESH CLIP DURATIONS ===")
+    # remove existing clip durations from older versions
+    old_clip_durations: list[str] = glob.glob(
+        os.path.join(HERE, "experiments", "**", CDUR_FN), recursive=True
+    )
+    print(
+        f"=== Found {len(old_clip_durations)} files in local files, we will delete older ones..."
+    )
+    for inx, clip_path in enumerate(old_clip_durations):
+        # keep for last version
+        if not clip_path.split(os.sep)[-4] == conf.CV_DATASET_VERSION:
+            print("Remove:", inx, "/".join(clip_path.split(os.sep)[-4:]))
+            os.remove(path=clip_path)
+        else:
+            print("Skip:", inx, "/".join(clip_path.split(os.sep)[-4:]))
+    # recalculate clip durations
+    glob_path: str = os.path.join(
+        conf.CV_DATASET_BASE_DIR, conf.CV_DATASET_VERSION, "**", "clips"
+    )
+    print(f"Searching clips dirs with {glob_path}")
+    clips_dirs: list[str] = glob.glob(glob_path, recursive=False)
+    print(f"=== Processing {len(clips_dirs)} locales (files created in data source)")
+    for inx, clips_dir in enumerate(clips_dirs):
+        # create only if file does not exists
+        if not os.path.isfile(os.path.join(clips_dir, CDUR_FN)):
+            build_clip_durations_table(clips_dir)
+        else:
+            print("Skip:", inx, "/".join(clips_dir.split(os.sep)[-4:]))
+
+
 def main() -> None:
+    """
+    Original Corpora Creator with -s 1 option for Common Voice Datasets (if splits are not provided)
+    """
     print(
         "=== Original Corpora Creator with -s 1 option for Common Voice Datasets (if splits are not provided) ==="
     )
 
     # Copy source experiment tree to destination experiment
-    experiments_path: str = os.path.join(HERE, "experiments")
-    src_exppath: str = os.path.join(experiments_path, SRC_ALGO_DIR)
-    dst_exppath: str = os.path.join(experiments_path, DST_ALGO_DIR)
+    src_exppath: str = os.path.join(HERE, "experiments", aspecs.src_algo_dir)
+    dst_exppath: str = os.path.join(HERE, "experiments", aspecs.dst_algo_dir)
 
     # Calculate clip durations?
     if DO_CALC_CLIP_DURATIONS:
-        print("=== REFRESH CLIP DURATIONS ===")
-        # remove existing clip durations from older versions
-        old_clip_durations: list[str] = glob.glob(
-            os.path.join(experiments_path, "**", CDUR_FN), recursive=True
-        )
-        print(
-            f"=== Found {len(old_clip_durations)} files in local files, we will delete older ones..."
-        )
-        for inx, clip_path in enumerate(old_clip_durations):
-            # keep for last version
-            if not (clip_path.split(os.sep)[-4] == SOURCE_DATASET):
-                print("Remove:", inx, "/".join(clip_path.split(os.sep)[-4:]))
-                os.remove(path=clip_path)
-            else:
-                print("Skip:", inx, "/".join(clip_path.split(os.sep)[-4:]))
-        # recalculate clip durations
-        globPath: str = os.path.join(SOURCE_DATASET_DIR, SOURCE_DATASET, "**", "clips")
-        print(f"Searching clips dirs with {globPath}")
-        clips_dirs: list[str] = glob.glob(globPath, recursive=False)
-        print(
-            f"=== Processing {len(clips_dirs)} locales (files created in data source)"
-        )
-        for inx, clips_dir in enumerate(clips_dirs):
-            # create only if file does not exists
-            if not os.path.isfile(os.path.join(clips_dir, CDUR_FN)):
-                build_clip_durations_table(clips_dir)
-            else:
-                print("Skip:", inx, "/".join(clips_dir.split(os.sep)[-4:]))
+        handle_clip_durations()
 
     # Do we want to copy the .tsv files from original expanded datasets?
     if USE_SOURCE_DATASET_DIR:
         # copy all .tsv files while forming structure
         print("=== COPY .TSV FILES FROM DATASETS ===")
-        copyto_corpus_dir: str = os.path.join(src_exppath, SOURCE_DATASET)
+        copyto_corpus_dir: str = os.path.join(src_exppath, conf.CV_DATASET_VERSION)
         os.makedirs(name=copyto_corpus_dir, exist_ok=True)
         shutil.copytree(
-            src=os.path.join(SOURCE_DATASET_DIR, SOURCE_DATASET),
+            src=os.path.join(conf.CV_DATASET_BASE_DIR, conf.CV_DATASET_VERSION),
             dst=copyto_corpus_dir,
             dirs_exist_ok=True,
             ignore=shutil.ignore_patterns("*.mp3"),
@@ -467,11 +275,9 @@ def main() -> None:
     print()  # extra line is for progress line
 
     # For each corpus
-    cnt: int = 0  # count of corpora checked
-    cnt_skipped: int = 0  # count of corpora skipped
-    start_time: datetime = datetime.now()
-
-    cnt_total: int = len(all_validated)
+    g.start_time = datetime.now()
+    g.total_cnt = len(all_validated)
+    g.processed_cnt = 0  # count of corpora checked
 
     for val_path in all_validated:
         src_corpus_dir: str = os.path.split(val_path)[0]
@@ -479,45 +285,48 @@ def main() -> None:
         ver: str = os.path.split(os.path.split(src_corpus_dir)[0])[1]
         dst_corpus_dir: str = os.path.join(dst_exppath, ver, lc)
 
-        cnt += 1
-        if VERBOSE:
-            print(f"\n=== Processing {cnt}/{cnt_total} => {ver} - {lc}")
+        g.processed_cnt += 1
+        if conf.VERBOSE:
+            print(f"\n=== Processing {g.processed_cnt}/{g.total_cnt} => {ver} - {lc}")
         else:
             print("\033[F" + " " * 80)
-            print(f"\033[FProcessing {cnt}/{cnt_total} => {ver} - {lc}")
+            print(f"\033[FProcessing {g.processed_cnt}/{g.total_cnt} => {ver} - {lc}")
 
-        if not FORCE_CREATE and os.path.isfile(
+        if not conf.FORCE_CREATE and os.path.isfile(
             os.path.join(dst_corpus_dir, "train.tsv")
         ):
             # Already there and is not forced to recreate, so skip
-            cnt_skipped += 1
+            g.skipped_exists += 1
         else:
             if not corpora_creator_original(  # df might be empty, thus returns false
                 lc=lc,
                 val_path=val_path,
                 dst_path=dst_corpus_dir,
-                duplicate_sentences=DUPLICATE_SENTENCE_COUNT,
+                duplicate_sentences=aspecs.duplicate_sentence_count,
             ):
-                cnt_skipped += 1
+                g.skipped_exists += 1
             print()
 
-    finish_time: datetime = datetime.now()
-    process_timedelta: timedelta = finish_time - start_time
-    process_seconds: float = process_timedelta.total_seconds()
-    avg_seconds: float = process_seconds / cnt_total
-    cnt_processed: int = cnt - cnt_skipped
-    avg_seconds_new: float = -1
-    if cnt_processed > 0:
-        avg_seconds_new = process_seconds / cnt_processed
-    print("\n" + "-" * 80)
-    print(
-        f'Finished processing of {cnt_total} corpora in {str(process_timedelta)} secs, avg duration {float("{:.3f}".format(avg_seconds))} secs'
-    )
-    print(f"Processed: {cnt}, Skipped: {cnt_skipped}, New: {cnt_processed}")
-    if cnt_processed > 0:
-        print(
-            f'Avg. time new split creation: {float("{:.3f}".format(avg_seconds_new))} secs'
-        )
+    final_report(g)
+
+    # g.finish_time = datetime.now()
+    # g.process_seconds = (g.finish_time - g.start_time).total_seconds()
+    # avg_seconds: float = g.process_seconds / g.total_cnt
+    # cnt_really_processed: int = g.processed_cnt - g.skipped_exists - g.skipped_nodata
+    # avg_seconds_new: float = -1
+    # if cnt_really_processed > 0:
+    #     avg_seconds_new = g.process_seconds / cnt_really_processed
+    # print("\n" + "-" * 80)
+    # print(
+    #     f"Finished processing of {g.total_cnt} corpora in {str(g.process_seconds)} secs,"
+    #     + f"avg duration {dec3(avg_seconds)} secs"
+    # )
+    # print(f"Processed: {g.processed_cnt}, Skipped: {g.skipped_exists}, New: {cnt_really_processed}")
+    # if cnt_really_processed > 0:
+    #     print(
+    #         f'Avg. time new split creation: {dec3(avg_seconds_new)} secs'
+    #     )
 
 
-main()
+if __name__ == "__main__":
+    main()

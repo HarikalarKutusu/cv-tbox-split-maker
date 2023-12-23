@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-
+"""
+cv-tbox Diversity Check / Split Maker
+Builds a table for diversitiy measures
+"""
 ###########################################################################
 # tbox_diversity_table.py
 #
@@ -22,21 +25,30 @@
 # [copyright]
 ###########################################################################
 
-import sys, os, glob, csv
-from pathlib import Path
+# Standard Lib
+import os
+import sys
+import glob
+import csv
 import datetime as dt
-import numpy as np
-import pandas as pd
+import multiprocessing as mp
+import warnings
 from typing import Any
 
-# MULTIPROCESSING
-import multiprocessing as mp
+
+# External dependencies
+import numpy as np
+import pandas as pd
 import psutil
 
-# [FIXME] Ignore future warming for now
-import warnings
+# Module
+import conf
+from lib import df_read, df_write
 
+
+# [FIXME] Ignore future warming for now
 warnings.filterwarnings("ignore")
+
 
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
@@ -94,48 +106,8 @@ CV_AGES: "list[str]" = [
     "nineties",
 ]
 
-# Program parameters
-VERBOSE: bool = False
-FAIL_ON_NOT_FOUND: bool = True
 # PROC_COUNT: int = psutil.cpu_count(logical=False) - 1
 PROC_COUNT: int = psutil.cpu_count(logical=True)
-
-#
-# DataFrame file read-write
-#
-
-
-def df_read(fpath: str) -> pd.DataFrame:
-    """Read a tsv file into a dataframe"""
-    if not os.path.isfile(fpath):
-        print(f"FATAL: File {fpath} cannot be located!")
-        if FAIL_ON_NOT_FOUND:
-            sys.exit(1)
-
-    df: pd.DataFrame = pd.read_csv(
-        fpath,
-        sep="\t",
-        parse_dates=False,
-        engine="python",
-        encoding="utf-8",
-        on_bad_lines="skip",
-        quotechar='"',
-        quoting=csv.QUOTE_NONE,
-    )
-    return df
-
-
-def df_write(df: pd.DataFrame, fpath: str) -> None:
-    """Write dataframe to a tsv file"""
-    df.to_csv(
-        fpath,
-        header=True,
-        index=False,
-        encoding="utf-8",
-        sep="\t",
-        escapechar="\\",
-        quoting=csv.QUOTE_NONE,
-    )
 
 
 #
@@ -170,7 +142,7 @@ def handle_split(fpath: str) -> dict[str, Any]:
     df: pd.DataFrame = df_read(fpath)
     res: dict[str, Any] = {}
 
-    if VERBOSE:
+    if conf.VERBOSE:
         print(f"Processing {exp} - {ver} - {lc} - {split}")
     else:
         print("\033[F" + " " * 100)
@@ -282,7 +254,7 @@ def main() -> None:
 
     start_time: dt.datetime = dt.datetime.now()
 
-    # TODO these should be set as arguments
+    # [TODO] these should be set as arguments
     experiments_dir: str = os.path.join(HERE, "experiments")
 
     # Prepare final dataframe
