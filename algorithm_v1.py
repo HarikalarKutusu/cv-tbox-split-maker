@@ -52,7 +52,7 @@ import psutil
 from tqdm import tqdm
 
 # Module
-from lib import Globals, AlgorithmSpecs, AlgorithmResults
+from typedef import AlgorithmSpecs, AlgorithmResults, Globals
 from lib import calc_sample_size, df_read, df_write, final_report
 import conf
 

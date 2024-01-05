@@ -36,13 +36,15 @@ import logging
 
 # External dependencies
 import pandas as pd
+from tqdm import tqdm
 import av
 import corporacreator
 
 # Module
 import conf
-from lib import Globals, AlgorithmSpecs, LocalCorpus, final_report
-from lib import df_read, df_write, dec3
+from typedef import AlgorithmSpecs, Globals
+from lib import LocalCorpus
+from lib import df_read, df_write, final_report
 
 # Get rid of warnings
 logging.getLogger("libav").setLevel(logging.ERROR)

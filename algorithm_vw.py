@@ -35,7 +35,7 @@ from tqdm import tqdm
 
 # Module
 from languages import WHISPER_LANGUAGES
-from lib import Globals, AlgorithmSpecs, AlgorithmResults
+from typedef import AlgorithmSpecs, AlgorithmResults, Globals
 from lib import df_read, df_write, final_report
 import conf
 

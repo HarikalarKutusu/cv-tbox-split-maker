@@ -43,8 +43,9 @@ import corporacreator
 from tqdm import tqdm
 
 # Module
-from lib import Globals, AlgorithmSpecs, LocalCorpus, final_report
-from lib import df_read
+from typedef import AlgorithmSpecs, Globals
+from lib import LocalCorpus
+from lib import df_read, final_report
 import conf
 
 
