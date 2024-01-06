@@ -10,8 +10,8 @@
 #
 # This script is part of Common Voice ToolBox Package
 #
-# [github]
-# [copyright]
+# github: https://github.com/HarikalarKutusu/common-voice-diversity-check
+# Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
 # Standard Lib

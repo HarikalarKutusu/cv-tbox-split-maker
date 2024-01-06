@@ -8,7 +8,7 @@ Standard Common Voice CorporaCreator algorithm with 99 recordings for a sentence
 #
 # Runs Common Voice Corpora Creator with -s 99 parameter
 #
-# Ff destination already exists, it is skipped,
+# If destination already exists, it is skipped,
 # else Corpora Creator is run.
 #
 # The result will only include train, dev, tes tsv files.
@@ -20,8 +20,8 @@ Standard Common Voice CorporaCreator algorithm with 99 recordings for a sentence
 #
 # This script is part of Common Voice ToolBox Package
 #
-# [github]
-# [copyright]
+# github: https://github.com/HarikalarKutusu/common-voice-diversity-check
+# Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
 # Standard Lib
@@ -37,10 +37,10 @@ import threading
 
 
 # External Dependencies
+from tqdm import tqdm
+from corporacreator import parse_args
 import pandas as pd
 import psutil
-import corporacreator
-from tqdm import tqdm
 
 # Module
 from typedef import AlgorithmSpecs, Globals
@@ -95,7 +95,7 @@ def corpora_creator_original(val_path: str) -> bool:
         os.makedirs(temp_path, exist_ok=True)
 
         # handle corpus
-        args: Namespace = corporacreator.parse_args(
+        args: Namespace = parse_args(
             [
                 "-d",
                 temp_path,
@@ -194,26 +194,6 @@ def main() -> None:
     pbar.close()
 
     final_report(g)
-
-    # g.finish_time = datetime.now()
-    # g.process_seconds = (g.finish_time - g.start_time).total_seconds()
-    # avg_seconds: float = -1
-    # avg_seconds_actual: float = -1
-    # if g.src_cnt > 0:
-    #     avg_seconds = g.process_seconds / g.src_cnt
-    # if g.processed_cnt > 0:
-    #     avg_seconds_actual = g.process_seconds / g.processed_cnt
-    # print("\n" + "-" * 80)
-    # print(
-    #     f"Finished processing of {g.total_cnt} corpora in {str(g.process_seconds)} secs"
-    # )
-    # print(
-    #     f"Checked: {g.src_cnt}, Skipped (no-data): {g.skipped_nodata}, Actual: {g.processed_cnt}"
-    # )
-    # print(
-    #     f'AVG in CHECKED {dec3(avg_seconds)} secs, '
-    #     + f'AVG in ACTUAL {dec3(avg_seconds_actual)} secs, '
-    # )
 
 
 if __name__ == "__main__":

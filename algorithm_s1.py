@@ -6,9 +6,10 @@ Standard Common Voice CorporaCreator algorithm which is used to create the defau
 ###########################################################################
 # algorithm-s1.py
 #
-# Runs Common Voice Corpora Creator with -s 99 parameter
+# Runs Common Voice Corpora Creator with -s 1 parameter
+# This is required if the dataset does not include train/dev/test.tsv files
 #
-# Ff destination already exists, it is skipped,
+# If destination already exists, it is skipped,
 # else Corpora Creator is run.
 #
 # The result will only include train, dev, tes tsv files.
@@ -20,25 +21,25 @@ Standard Common Voice CorporaCreator algorithm which is used to create the defau
 #
 # This script is part of Common Voice ToolBox Package
 #
-# [github]
-# [copyright]
+# github: https://github.com/HarikalarKutusu/common-voice-diversity-check
+# Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
 # Standard Lib
 from argparse import Namespace
+from datetime import datetime, timedelta
+from typing import Any
 import os
 import sys
 import shutil
 import glob
-from datetime import datetime, timedelta
-from typing import Any
 import logging
 
 # External dependencies
-import pandas as pd
 from tqdm import tqdm
+from corporacreator import parse_args
+import pandas as pd
 import av
-import corporacreator
 
 # Module
 import conf
@@ -98,7 +99,7 @@ def corpora_creator_original(
         os.makedirs(temp_path, exist_ok=True)
 
         # handle corpus
-        args: Namespace = corporacreator.parse_args(
+        args: Namespace = parse_args(
             ["-d", temp_path, "-f", val_path, "-s", str(duplicate_sentences)]
         )
         corpus: LocalCorpus = LocalCorpus(args, lc, df_corpus)

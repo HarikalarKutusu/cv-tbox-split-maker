@@ -18,8 +18,8 @@ A version of v1 algorithm which produces train & dev, where external dataset lik
 #
 # This script is part of Common Voice ToolBox Package
 #
-# [github]
-# [copyright]
+# github: https://github.com/HarikalarKutusu/common-voice-diversity-check
+# Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
 # Standard Lib
@@ -69,6 +69,7 @@ aspecs = AlgorithmSpecs(
     max_test_user=0.0,
     max_dev_user=0.50,
 )
+
 
 #
 # Handle one split creation, this is where calculations happen
@@ -261,7 +262,7 @@ def main() -> None:
             g.tiny_dataset_cnt += res.tiny
             g.medium_dataset_cnt += res.medium
             g.large_dataset_cnt += res.large
-        except Exception as e:
+        except ValueError as e:
             print(f"Failed for {result}:", e)
 
     #
@@ -318,12 +319,7 @@ def main() -> None:
                 algorithm_vx,
                 args=(val_path,),
             )
-            # print(res.get())
             pool_callback(res)
-        # callback=pool_callback,
-        # error_callback=error_callback,
-        # for val_path in final_list:
-        #     pool_callback(algorithm_v1(val_path))
     pbar.close()
 
     final_report(g)
