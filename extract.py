@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """cv-tbox Diversity Check / TSV File Extractor"""
 ###########################################################################
-# extract_tsv.py
+# extract.py
 #
 # From a directory containing downloaded Common Voice dataset files
-# extracts only the .tsv files into another location.
+# extracts only the .tsv files or all files into another location.
 #
 # Use:
-# python extract_tsv.py
+# python extract.py
 #
 # This script is part of Common Voice ToolBox Package
 #
-# [github]
-# [copyright]
+# github: https://github.com/HarikalarKutusu/common-voice-diversity-check
+# Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
 # Standard Lib
@@ -37,8 +37,9 @@ from lib import dec3
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
     sys.path.append(HERE)
-    
+
 MINIMAL_PROCS: int = 2
+
 
 def extract_all_process(p: str) -> int:
     """Multiprocessing handler for full extraction"""
@@ -58,7 +59,7 @@ def extract_tsv_process(p: str) -> int:
     return 1
 
 
-def main(extract_all: bool = False) -> None:
+def main(extract_all: bool = False, forced: bool = False) -> None:
     """Main process"""
 
     # get compressed files list
@@ -68,13 +69,14 @@ def main(extract_all: bool = False) -> None:
     total_cnt: int = len(all_files)
 
     start_time: datetime = datetime.now()
-    src_files: list[str] = all_files if conf.FORCE_CREATE else []
+    src_files: list[str] = all_files if conf.FORCE_CREATE or forced else []
 
     dst_check: str = os.path.join(conf.CV_DATASET_BASE_DIR, conf.CV_DATASET_VERSION)
+    os.makedirs(dst_check, exist_ok=True)
 
     if extract_all:
         # remove already extracted ones from the list
-        if not conf.FORCE_CREATE:
+        if not (conf.FORCE_CREATE or forced):
             for p in all_files:
                 lc: str = (
                     os.path.split(p)[-1]
@@ -108,7 +110,7 @@ def main(extract_all: bool = False) -> None:
 
     else:
         # remove already extracted ones from the list
-        if not conf.FORCE_CREATE:
+        if not (conf.FORCE_CREATE or forced):
             for p in all_files:
                 lc: str = (
                     os.path.split(p)[-1]
@@ -125,7 +127,9 @@ def main(extract_all: bool = False) -> None:
         # Real cores only to prevent excessive HDD head movements
         proc_count: int = psutil.cpu_count(logical=False)
 
-        print(f"Extracting only .TSV files from {src_cnt}/{total_cnt} compressed datasets")
+        print(
+            f"Extracting only .TSV files from {src_cnt}/{total_cnt} compressed datasets"
+        )
         if conf.FORCE_CREATE:
             print("Expanding even the destination exists (force_create)")
         elif total_cnt > src_cnt:
@@ -147,5 +151,6 @@ def main(extract_all: bool = False) -> None:
 
 if __name__ == "__main__":
     args: list[str] = sys.argv
-    is_all: bool = args[1] == "--all" or args[2] == "--all"
-    main(is_all)
+    arg_all: bool = "--all" in args
+    arg_force: bool = "--force" in args
+    main(arg_all, arg_force)
