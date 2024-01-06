@@ -5,7 +5,6 @@ import os
 import sys
 import csv
 from argparse import Namespace
-from dataclasses import dataclass
 from datetime import datetime
 
 # External Dependencies
@@ -30,7 +29,7 @@ def dec3(x: float) -> str:
     return str(round(x, 3))
 
 
-def final_report(g: Globals):
+def final_report(g: Globals) -> None:
     """Reports the result statistics"""
     finish_time: datetime = datetime.now()
     process_seconds: float = (finish_time - g.start_time).total_seconds()
@@ -120,7 +119,7 @@ class LocalCorpus:
     # __test: pd.DataFrame = pd.DataFrame()
     # validated: pd.DataFrame = pd.DataFrame()
 
-    def __init__(self, args: Namespace, locale: str, validated: pd.DataFrame):
+    def __init__(self, args: Namespace, locale: str, validated: pd.DataFrame) -> None:
         self.__args: Namespace = args
         self.__locale: str = locale
         self.validated: pd.DataFrame = validated
@@ -128,11 +127,11 @@ class LocalCorpus:
         self.dev: pd.DataFrame = pd.DataFrame(columns=validated.columns)
         self.test: pd.DataFrame = pd.DataFrame(columns=validated.columns)
 
-    def create(self):
+    def create(self) -> None:
         """Creates a :class:`corporacreator.Corpus` for `self.locale`."""
         self._post_process_valid_data()
 
-    def _post_process_valid_data(self):
+    def _post_process_valid_data(self) -> None:
         # Remove duplicate sentences while maintaining maximal user diversity at the frame's start
         # [TODO]: Make addition of user_sentence_count cleaner
         speaker_counts: pd.DataFrame = pd.DataFrame(
