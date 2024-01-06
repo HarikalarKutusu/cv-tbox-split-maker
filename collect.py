@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """cv-tbox Diversity Check / Split Maker - Collect Default Splits"""
 ###########################################################################
-# collect_s1.py
+# collect.py
 #
 # Copy the *.tsv files from CV release to experiments/s1/[release]
 #
 # Use:
-# python collect_s1.py
+# python collect.py
 #
 # This script is part of Common Voice ToolBox Package
 #
