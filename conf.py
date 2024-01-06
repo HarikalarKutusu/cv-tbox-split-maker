@@ -4,9 +4,12 @@ import os
 
 # Locations
 
-CV_DATASET_BASE_DIR: str = os.path.normpath("M:\\DATASETS\\CV")
-CV_DATASET_VERSION: str = "cv-corpus-16.1-2023-12-06"
+CV_COMPRESSED_BASE_DIR: str = os.path.join("V:", os.sep, "DATASETS", "VOICE", "CV")
+CV_DATASET_BASE_DIR: str = os.path.join("M:", os.sep, "DATASETS", "CV")
 
+# Version to work on
+
+CV_DATASET_VERSION: str = "cv-corpus-16.1-2023-12-06"
 
 # Program parameters
 
