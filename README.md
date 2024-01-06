@@ -17,32 +17,46 @@ The process of doing these with L languages, V versions and S splitting strategi
 
 This is where this tool comes in. You just put your data in directories and feed them to scripts. The basic measures are compiled into a tsv file which you can process with your own scripts or other tools. We also included an MS Excel file as an analysis frontend to this data.
 
+## Scripts
+
+In the required execution order:
+
+- **extract.py** : Expands .tsv files (or all files with `--all` option) from downloaded .tar.gz dataset files in a directory, into another directory. If `--all` is not specified, audio files under `clips` are not expanded.
+- **collect_s1.py** : From the expanded datasets, copies necessary files to internal space to work on (these include common .tsv files and default split files).
+- **algorithm_xxx.py** : Different splitting algorithms to execute (see below)
+- **tbox_diversity_table.py** : The script will scan all experiments, versions, and languages under experiments directory and builds results/$diversity_data.tsv file containing everything. You can then take it and analyze further or use the Excel file provided.
+
 ## How
 
 To prepare:
 
-- Clone the repo, modify the experiment directory for your tests (actually you only need the scripts at the root of the repo, you may use your own "experiments" directory.
-  - Create splitting algorithm directories under "experiments", these are your different split strategies
-  - Under your experiment directory put Common Voice version directories.
-  - Under CV version directories create language directories (use language codes)
-  - Put your tsv files under that language directory (do not put the actual clips, they are not used and they will take space)
-- Run a script you desire
+- Clone the repo and cd into it
+- Use `Python v3.11+`, create a venv and activate it.
+- Run `pip install -U -r requirements.txt` to install the dependencies.
+- Put your downloaded dataset(s) into a directory (e.g. /downloaded_datasets/cv-corpus-16.1-2023-12-06)
+- Create a directory for expanded dataset files (e.g. /datasets)
+- Edit `config.py` to point to them
+- Run `python extract.py` to extract only the .tsv files from the datasets
+- Run `python collect.py` to copy the metadata files into the internal working area
+- Run the aplitting algoritm(s) you desire
 
-So the directory structure is like:
+The internal data directory structure is like:
 
 ```py
-root/experiments
+clone_root/experiments
     <exp>                           # e.g. s1, s99, v1
         <cv-corpus>                 # e.g. cv-corpus-NN.N-YYYY-MM-DD
             <lc>                    # Language directory (en, tr etc)
-                *.tsv               # Language data (*.tsv only)
+                *.tsv               # Metadata (*.tsv only)
             ...
         ...
     <exp>
         ...
 ```
 
-## Where is the data?
+Under `experiments/s1`, all .tsv files from the release can be found. Other algorithm directories only contain train/dev/test.tsv files.
+
+## Algorithms and the data
 
 The data we use is huge and not suited for github. We used the following:
 
@@ -52,31 +66,7 @@ The data we use is huge and not suited for github. We used the following:
 - vw: ("Voice first for Whisper") A version of v1 for better OpenAI Whisper fine-tuning, with 90-5-5% splits, keeping 25-25-50% diversity (only available for Whisper languages).
 - vx: ("Voice first for eXternal test") A version of v1 with 95-5-0% splits and 50-50-0% diversity, so no test split, where you can test your model against other datasets like Fleurs or Voxpopuli (only available for Fleurs & Voxpopuli languages).
 
-We will be releasing these data in the future, there are gigabytes of data...
-
-## Scripts
-
-The s1 and s99 come from current Corpora creator. The included "algorithm-v1.py" script includes a non-optimized first version of the v1 algorithm.
-
-We also tested two other "more random" algorithms, random selection (algorithm-r1.py) and some other proposition which empasizes the transcript bias (neglecting voice bias), implemented in "algorithhm-n1.py"
-
-We will create an optimized implementation for v1 and create an alternative CorporaCreator in the future.
-
-To run a script, you need to create a venv and include the necessary tooling with pip. Then just run with "python script.py".
-
-### Results
-
-The script will scan all experiments, versions, and languages under experiments directory and builds results/$diversity_data.tsv file containing everything. You can then take it and analyze further or use the Excel file provided.
-
-## Setup and Run
-
-Developed and tested on Python 3.8.x but should work on later versions. It is preferred to use a virtual environment.
-
-1. Create venv and activate it
-2. Clone the repo and cd into it
-3. Install dependencies using `pip install -r requirements.txt`
-4. Prepare your data as descripbed above
-5. Run the script you want
+Compressed splits for each language / dataset version / algorithm can be found under the [shared Google Drive location](https://drive.google.com/drive/folders/13c3VME_qRT1JSGjPue153K8FiDBH4QD2?usp=drive_link). To use them in your trainings, just download one and override the default train/dev/test.tsv files in your expanded dataset directory.
 
 ## Other
 
