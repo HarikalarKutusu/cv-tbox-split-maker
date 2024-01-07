@@ -81,44 +81,43 @@ def corpora_creator_original(val_path: str) -> bool:
     ver: str = os.path.split(os.path.split(src_corpus_dir)[0])[1]
     dst_corpus_dir: str = os.path.join(dst_exppath, ver, lc)
 
-    # Assume result false
-    res: bool = False
     # temp dir
-    temp_path: str = os.path.join(HERE, ".temp")
+    temp_path: str = os.path.join(HERE, ".temp", ver, lc)
 
     # call corpora creator with only validated (we don't need others)
     df_corpus: pd.DataFrame = df_read(val_path)
 
-    # Must have records in it
-    if df_corpus.shape[0] > 0:
-        # create temp dir
-        os.makedirs(temp_path, exist_ok=True)
+    # Must have records in it, else no go
+    if df_corpus.shape[0] == 0:
+        return False
 
-        # handle corpus
-        args: Namespace = parse_args(
-            [
-                "-d",
-                temp_path,
-                "-f",
-                val_path,
-                "-s",
-                str(aspecs.duplicate_sentence_count),
-            ]
-        )
-        corpus: LocalCorpus = LocalCorpus(args, lc, df_corpus)
-        corpus.create()
-        corpus.save(temp_path)
+    # Here, it has records in it
+    # create temp dir
+    os.makedirs(temp_path, exist_ok=True)
 
-        # move required files to destination
-        os.makedirs(dst_corpus_dir, exist_ok=True)
-        shutil.move(os.path.join(temp_path, lc, "train.tsv"), dst_corpus_dir)
-        shutil.move(os.path.join(temp_path, lc, "dev.tsv"), dst_corpus_dir)
-        shutil.move(os.path.join(temp_path, lc, "test.tsv"), dst_corpus_dir)
-        shutil.rmtree(os.path.join(temp_path, lc))
+    # handle corpus
+    args: Namespace = parse_args(
+        [
+            "-d",
+            temp_path,
+            "-f",
+            val_path,
+            "-s",
+            str(aspecs.duplicate_sentence_count),
+        ]
+    )
+    corpus: LocalCorpus = LocalCorpus(args, lc, df_corpus)
+    corpus.create()
+    corpus.save(temp_path)
 
-        res = True
+    # move required files to destination
+    os.makedirs(dst_corpus_dir, exist_ok=True)
+    shutil.move(os.path.join(temp_path, lc, "train.tsv"), dst_corpus_dir)
+    shutil.move(os.path.join(temp_path, lc, "dev.tsv"), dst_corpus_dir)
+    shutil.move(os.path.join(temp_path, lc, "test.tsv"), dst_corpus_dir)
+    shutil.rmtree(os.path.join(temp_path, lc))
 
-    return res
+    return True
 
 
 #
@@ -185,13 +184,22 @@ def main() -> None:
     )
     print(f"Skipping {g.skipped_exists} as they already exist.")
 
-    pbar = tqdm(total=g.src_cnt, unit="Dataset")
+    # pbar = tqdm(total=g.src_cnt, unit="Dataset")
+    # with mp.Pool(PROC_COUNT) as pool:
+    #     for val_path in final_list:
+    #         pool.apply_async(
+    #             corpora_creator_original, args=(val_path,), callback=pool_callback
+    #         )
+    # pbar.close()
+
+    chunk_size: int = min(10, g.src_cnt // PROC_COUNT + 0 if g.src_cnt % PROC_COUNT == 0 else 1)
+
     with mp.Pool(PROC_COUNT) as pool:
-        for val_path in final_list:
-            pool.apply_async(
-                corpora_creator_original, args=(val_path,), callback=pool_callback
-            )
-    pbar.close()
+        with tqdm(total=g.src_cnt) as pbar:
+            for result in pool.imap_unordered(
+                corpora_creator_original, final_list, chunksize=chunk_size
+            ):
+                pool_callback(result)
 
     final_report(g)
 

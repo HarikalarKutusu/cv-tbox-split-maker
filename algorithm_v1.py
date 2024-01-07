@@ -348,7 +348,7 @@ def algorithm_v1(val_path: str) -> AlgorithmResults:
         train_slice: pd.DataFrame = pd.concat([delta_test_df.loc[:], train_slice])
 
     # print('SLICES:', test_slice.shape, dev_slice.shape, train_slice.shape)
-    
+
     #
     # STEP-3 : Now, build the actual split DF's
     #
@@ -432,16 +432,14 @@ def main() -> None:
     # Callback
     #
 
-    def pool_callback(result) -> None:
+    def pool_callback(res: AlgorithmResults) -> None:
         """Callback to append results and increment bar"""
         # print(f"Finished {res.lc}")
         pbar.update()
-        res: AlgorithmResults
         try:
-            res = result.get()
             g.processed_cnt += res.processed
-            g.skipped_nodata += res.skipped_nodata
             g.skipped_small += res.skipped_small
+            g.skipped_nodata += res.skipped_nodata
             g.tiny_dataset_cnt += res.tiny
             g.medium_dataset_cnt += res.medium
             g.large_dataset_cnt += res.large
@@ -489,15 +487,14 @@ def main() -> None:
     )
     print(f"Skipping {g.skipped_exists} as they already exist.")
 
-    pbar = tqdm(total=g.src_cnt, unit=" Dataset")
+    chunk_size: int = min(10, g.src_cnt // PROC_COUNT + 0 if g.src_cnt % PROC_COUNT == 0 else 1)
+
     with mp.Pool(PROC_COUNT) as pool:
-        for val_path in final_list:
-            res: AsyncResult = pool.apply_async(
-                algorithm_v1,
-                args=(val_path,),
-            )
-            pool_callback(res)
-    pbar.close()
+        with tqdm(total=g.src_cnt) as pbar:
+            for result in pool.imap_unordered(
+                algorithm_v1, final_list, chunksize=chunk_size
+            ):
+                pool_callback(result)
 
     final_report(g)
 

@@ -43,7 +43,7 @@ import conf
 # CONST
 #
 SAMPLE_SIZE_THRESHOLD: int = 150000
-MIN_VALIDATED_THRESHOLD = 1000
+MIN_VALIDATED_THRESHOLD = 2000
 
 #
 # Globals
@@ -90,6 +90,10 @@ def algorithm_vw(val_path: str) -> AlgorithmResults:
     validated_df: pd.DataFrame = df_read(val_path)
 
     total_validated: int = validated_df.shape[0]
+    if total_validated == 0:
+        results.tiny = 1
+        results.skipped_nodata = 1
+        return results
     if total_validated < MIN_VALIDATED_THRESHOLD:
         results.tiny = 1
         results.skipped_small = 1
@@ -190,6 +194,7 @@ def algorithm_vw(val_path: str) -> AlgorithmResults:
     # Handle TEST-TRAIN
     test_missing: int = test_target - actual_test_target  # calc how much missing
     # do it only missing & possible
+    # if test_missing > 0 and test_slice.shape[0] > 5 and train_slice.shape[0] > 5:
     if test_missing > 0 and test_slice.shape[0] > 5 and train_slice.shape[0] > 5:
         inx: int = -1
         delta_test: int = 0
@@ -292,14 +297,13 @@ def main() -> None:
     # Callback
     #
 
-    def pool_callback(result) -> None:
+    def pool_callback(res: AlgorithmResults) -> None:
         """Callback to append results and increment bar"""
         # print(f"Finished {res.lc}")
         pbar.update()
-        res: AlgorithmResults
         try:
-            res = result.get()
             g.processed_cnt += res.processed
+            g.skipped_small += res.skipped_small
             g.skipped_nodata += res.skipped_nodata
             g.tiny_dataset_cnt += res.tiny
             g.medium_dataset_cnt += res.medium
@@ -352,15 +356,15 @@ def main() -> None:
     )
     print(f"Skipping Existing: {g.skipped_exists} & Not Supported: {g.skipped_nosupport}")
 
-    pbar = tqdm(total=g.src_cnt, unit=" Dataset")
+    chunk_size: int = g.src_cnt // PROC_COUNT + 0 if g.src_cnt % PROC_COUNT == 0 else 1
+
     with mp.Pool(PROC_COUNT) as pool:
-        for val_path in final_list:
-            res: AsyncResult = pool.apply_async(
-                algorithm_vw,
-                args=(val_path,),
-            )
-            pool_callback(res)
-    pbar.close()
+        with tqdm(total=g.src_cnt) as pbar:
+            for result in pool.imap_unordered(
+                algorithm_vw, final_list, chunksize=chunk_size
+            ):
+                pool_callback(result)
+
 
     final_report(g)
 
