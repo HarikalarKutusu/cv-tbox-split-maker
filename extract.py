@@ -71,8 +71,9 @@ def main(extract_all: bool = False, forced: bool = False) -> None:
     start_time: datetime = datetime.now()
     src_files: list[str] = all_files if conf.FORCE_CREATE or forced else []
 
-    dst_check: str = os.path.join(conf.CV_DATASET_BASE_DIR, conf.CV_DATASET_VERSION)
-    os.makedirs(dst_check, exist_ok=True)
+    dst_base: str = os.path.join(conf.CV_DATASET_BASE_DIR, conf.CV_DATASET_VERSION)
+    dst_check: str = ""
+    os.makedirs(dst_base, exist_ok=True)
 
     if extract_all:
         # remove already extracted ones from the list
@@ -84,8 +85,8 @@ def main(extract_all: bool = False, forced: bool = False) -> None:
                     .replace(".tar.gz", "")
                     .replace(".tar", "")
                 )
-                dst_check = os.path.join(dst_check, lc, "clips")
-                if conf.FORCE_CREATE or not os.path.isdir(dst_check):
+                dst_check: str = os.path.join(dst_base, lc, "clips")
+                if not os.path.isdir(dst_check):
                     src_files.append(p)
 
         src_cnt: int = len(src_files)
@@ -93,7 +94,7 @@ def main(extract_all: bool = False, forced: bool = False) -> None:
         # Low number of cores only to prevent HDD trashing
         proc_count: int = min(MINIMAL_PROCS, psutil.cpu_count(logical=False))
 
-        print(f"Extracting ALL files from {src_cnt}/{total_cnt} compressed datasets")
+        print(f"Extracting ALL files from {src_cnt}/{total_cnt} compressed datasets in {proc_count} processes")
         if conf.FORCE_CREATE:
             print("Expanding even the destination exists (force_create)")
         elif total_cnt > src_cnt:
@@ -118,8 +119,8 @@ def main(extract_all: bool = False, forced: bool = False) -> None:
                     .replace(".tar.gz", "")
                     .replace(".tar", "")
                 )
-                dst_check = os.path.join(dst_check, lc, "validated.tsv")
-                if conf.FORCE_CREATE or not os.path.isfile(dst_check):
+                dst_check = os.path.join(dst_base, lc, "validated.tsv")
+                if not os.path.isfile(dst_check):
                     src_files.append(p)
 
         src_cnt: int = len(src_files)
@@ -128,7 +129,7 @@ def main(extract_all: bool = False, forced: bool = False) -> None:
         proc_count: int = psutil.cpu_count(logical=False)
 
         print(
-            f"Extracting only .TSV files from {src_cnt}/{total_cnt} compressed datasets"
+            f"Extracting only .TSV files from {src_cnt}/{total_cnt} compressed datasets in {proc_count} processes"
         )
         if conf.FORCE_CREATE:
             print("Expanding even the destination exists (force_create)")
