@@ -1,6 +1,7 @@
 # Exclude large directory contents
-experiments-saved/*
 experiments/*
+.temp
+.logs
 !**/.gitkeep
 
 # Internal docs
