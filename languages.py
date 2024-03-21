@@ -41,6 +41,7 @@ CV_LANGUAGES: list[str] = [
 "he",
 "hi",
 "hsb",
+"ht",
 "hu",
 "hy-AM",
 "ia",
@@ -75,6 +76,7 @@ CV_LANGUAGES: list[str] = [
 "nhi",
 "nl",
 "nn-NO",
+"nso",
 "oc",
 "or",
 "os",
@@ -121,6 +123,8 @@ CV_LANGUAGES: list[str] = [
 "zh-CN",
 "zh-HK",
 "zh-TW",
+"zu",
+"zza",
 ]
 
 WHISPER_LANGUAGES: list[str] = [
