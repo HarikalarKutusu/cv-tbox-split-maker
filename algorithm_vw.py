@@ -40,12 +40,6 @@ from lib import df_read, df_write, final_report
 import conf
 
 #
-# CONST
-#
-SAMPLE_SIZE_THRESHOLD: int = 150000
-MIN_VALIDATED_THRESHOLD = 2000
-
-#
 # Globals
 #
 HERE: str = os.path.dirname(os.path.realpath(__file__))
@@ -54,9 +48,6 @@ if not HERE in sys.path:
 
 PROC_COUNT: int = psutil.cpu_count(logical=True)  # Full usage
 
-#
-# Globals
-#
 g = Globals()
 aspecs = AlgorithmSpecs(
     src_algo_dir="s1",
@@ -94,7 +85,7 @@ def algorithm_vw(val_path: str) -> AlgorithmResults:
         results.tiny = 1
         results.skipped_nodata = 1
         return results
-    if total_validated < MIN_VALIDATED_THRESHOLD:
+    if total_validated < conf.MIN_VALIDATED_THRESHOLD:
         results.tiny = 1
         results.skipped_small = 1
         return results
@@ -139,7 +130,7 @@ def algorithm_vw(val_path: str) -> AlgorithmResults:
     #
     # Tag Large & Madium, tiny is out of question
     #
-    if total_validated >= SAMPLE_SIZE_THRESHOLD:
+    if total_validated >= conf.SAMPLE_SIZE_THRESHOLD:
         results.large = 1
     else:
         results.medium = 1

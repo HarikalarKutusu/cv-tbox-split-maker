@@ -1,4 +1,5 @@
 """ cv-tbox Split Creator - Configuration File """
+
 import os
 
 
@@ -10,6 +11,13 @@ CV_DATASET_BASE_DIR: str = os.path.join("M:", os.sep, "DATASETS", "CV")
 # Version to work on
 
 CV_DATASET_VERSION: str = "cv-corpus-17.0-2024-03-15"
+
+# Splitting Parameters
+
+# At this point statistical sampling give better results
+SAMPLE_SIZE_THRESHOLD: int = 150000
+# We do not deal with languages having this much records in validated, for vw and vx algorithmns
+MIN_VALIDATED_THRESHOLD = 2000
 
 # Program parameters
 

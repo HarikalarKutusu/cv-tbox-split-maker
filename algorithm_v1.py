@@ -57,11 +57,6 @@ from lib import calc_sample_size, df_read, df_write, final_report
 import conf
 
 #
-# CONST
-#
-SAMPLE_SIZE_THRESHOLD: int = 150000
-
-#
 # Globals
 #
 HERE: str = os.path.dirname(os.path.realpath(__file__))
@@ -141,7 +136,7 @@ def algorithm_v1(val_path: str) -> AlgorithmResults:
     #
     # LARGE
     #
-    if total_validated >= SAMPLE_SIZE_THRESHOLD:
+    if total_validated >= conf.SAMPLE_SIZE_THRESHOLD:
         # use sample size calculation
         sample_size: int = int(calc_sample_size(total_validated))
         test_target: int = sample_size
