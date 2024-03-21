@@ -9,7 +9,7 @@ CV_DATASET_BASE_DIR: str = os.path.join("M:", os.sep, "DATASETS", "CV")
 
 # Version to work on
 
-CV_DATASET_VERSION: str = "cv-corpus-16.1-2023-12-06"
+CV_DATASET_VERSION: str = "cv-corpus-17.0-2024-03-15"
 
 # Program parameters
 
