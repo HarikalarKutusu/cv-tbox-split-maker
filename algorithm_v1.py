@@ -42,6 +42,7 @@ Alternative splitting algorithm which uses all recordings and regards diversity
 import os
 import sys
 import glob
+import shutil
 import multiprocessing as mp
 from multiprocessing.pool import AsyncResult
 from datetime import datetime
@@ -53,7 +54,7 @@ from tqdm import tqdm
 
 # Module
 from typedef import AlgorithmSpecs, AlgorithmResults, Globals
-from lib import calc_sample_size, df_read, df_write, final_report
+from lib import calc_sample_size, df_read, df_write, final_report, remove_deleted_users
 import conf
 
 #
@@ -93,10 +94,16 @@ def algorithm_v1(val_path: str) -> AlgorithmResults:
     results.lc = lc
     results.ver = ver
     # results.ver = ver.replace("cv-corpus-", "")
-    if conf.VERBOSE:
-        print(f"Executing {ver} - {lc}", flush=True)
+    # if conf.VERBOSE:
+    #     print(f"Executing {ver} - {lc}", flush=True)
 
     validated_df: pd.DataFrame = df_read(val_path)
+    num_original: int = validated_df.shape[0]
+
+    # Remove users who requested data deletion
+    validated_df = remove_deleted_users(validated_df)
+    if num_original != validated_df.shape[0] and conf.VERBOSE:
+        print(f"\nUSER RECORDS DELETED FROM VALIDATED {ver}-{lc} = {num_original - validated_df.shape[0]}")
 
     # add lowercase sentence column
     validated_df["sentence_lower"] = validated_df["sentence"].str.lower()
@@ -144,23 +151,6 @@ def algorithm_v1(val_path: str) -> AlgorithmResults:
         train_target: int = total_validated - dev_target - test_target
         results.large = 1
 
-        # if conf.VERBOSE:
-        #     print(
-        #         f"!!! LARGE DATASET! - Sample sizes for TEST and DEV are recalculated as: {sample_size}"
-        #     )
-        #     print(
-        #         f">>> Processing - {total_validated} validated records with {total_sentences} lower-case unique sentences from {total_voices} voices. Targeting:"
-        #     )
-        #     print(
-        #         f">>> TEST : {dec3(100 * test_target/total_validated)}% => {test_target} recs OR max {test_voice_max} voices"
-        #     )
-        #     print(
-        #         f">>> DEV  : {dec3(100 * dev_target/total_validated)}% => {dev_target} recs OR max {dev_voice_max} voices"
-        #     )
-        #     print(
-        #         f">>> TRAIN: {dec3(100 * train_target/total_validated)}% => {train_target} recs OR remaining from TEST & DEV"
-        #     )
-        #     # print()
     #
     # MEDIUM
     #
@@ -173,32 +163,10 @@ def algorithm_v1(val_path: str) -> AlgorithmResults:
         # is_medium = True
         results.medium = 1
 
-        # if conf.VERBOSE:
-        #     print(
-        #         f">>> Processing - {total_validated} validated records with {total_sentences} lower-case unique sentences from {total_voices} voices. Targeting:"
-        #     )
-        #     print(
-        #         f">>> TEST : {aspecs.test_percentage}% => {test_target} recs OR max {test_voice_max} voices"
-        #     )
-        #     print(
-        #         f">>> DEV  : {aspecs.dev_percentage}% => {dev_target} recs OR max {dev_voice_max} voices"
-        #     )
-        #     print(
-        #         f">>> TRAIN: {aspecs.train_percentage}% => {train_target} recs OR remaining from TEST & DEV"
-        #     )
-        #     # print()
-
     #
     # TINY
     #
     if total_validated < 100 or total_voices < 10:
-        # g.tiny_dataset_cnt += 1
-        # if is_large:
-        #     g.large_dataset_cnt -= 1
-        # if is_medium:
-        #     g.medium_dataset_cnt -= 1
-        # if conf.VERBOSE:
-        #     print("!!! TOO LOW ON RESOURCES, SPLITTING RANDOMLY !!!")
         # Remove extra columns
         test_df: pd.DataFrame = validated_df[:test_target]
         dev_df: pd.DataFrame = validated_df[test_target + 1 : test_target + dev_target]
@@ -251,14 +219,9 @@ def algorithm_v1(val_path: str) -> AlgorithmResults:
         voices_df["cumulative_recordings"].astype(int) > actual_dev_target
     ].reset_index(drop=True)
 
-    # if conf.VERBOSE:
-    #     print(f'VOICES: TEST={test_slice.shape[0]}/{test_voice_max}   DEV={dev_slice.shape[0]}/{dev_voice_max}   TRAIN={train_slice.shape[0]} TOTAL={train_slice.shape[0] + dev_slice.shape[0] + test_slice.shape[0]}/{total_voices}')
-    #     print(f'ACTUAL: TEST={actual_test_target}/{test_target} DEV={actual_dev_target - actual_test_target}/{dev_target}')
-
     #
     # STEP-2 : Now swap TEST's high end voices & DEV's high voices end with low end of TRAIN in order to fulfill the target split size.
     #
-    # print('SLICES:', test_slice.shape, dev_slice.shape, train_slice.shape)
 
     delta_test_df: pd.DataFrame = pd.DataFrame(columns=voices_df.columns)
     delta_dev_df: pd.DataFrame = pd.DataFrame(columns=voices_df.columns)
@@ -266,7 +229,6 @@ def algorithm_v1(val_path: str) -> AlgorithmResults:
 
     # Handle TEST-TRAIN
     test_missing: int = test_target - actual_test_target  # calc how much missing
-    # print('Missing recs in TEST=', test_missing)
     # do it only missing & possible
     if test_missing > 0 and test_slice.shape[0] > 5 and train_slice.shape[0] > 5:
         inx: int = -1
@@ -279,13 +241,7 @@ def algorithm_v1(val_path: str) -> AlgorithmResults:
             # start from highest to lower
             delta_test += int(test_slice["recorded_count"].iat[-inx])
             # print('...step...', inx, delta_train, delta_test)
-        # here we know
-        # if conf.VERBOSE:
-        #     print(
-        #         f"SWAP TEST-TRAIN {inx+1} VOICES, FOR {delta_train - delta_test} RECORDINGS TO FILL {test_missing} MISSING RECS IN TEST SPLIT"
-        #     )
-        # print('OLD TRAIN:\n', train_slice.head(inx+2))
-        # print('OLD TEST:\n', test_slice.tail(inx+2))
+
         # Get the tail to move to train (will happen later)
         delta_test_df: pd.DataFrame = test_slice[-inx - 1 :]
         # Get the head to move to test
@@ -294,12 +250,6 @@ def algorithm_v1(val_path: str) -> AlgorithmResults:
         test_slice: pd.DataFrame = pd.concat([test_slice[: -inx - 1], delta_train_df])
         # Make a smaller train by removing the moved head
         train_slice: pd.DataFrame = train_slice[inx + 1 :]
-        # print('DTEST:\n', delta_test_df.head(inx+2))
-        # print('DTRAIN:\n', delta_train_df.head(inx+2))
-        # print('NEW TRAIN:\n', train_slice.head(inx+2))
-        # print('NEW TEST:\n', test_slice.tail(inx+2))
-        # print('DELTAS:', delta_test_df.shape, delta_train_df.shape)
-        # print('SLICES:', test_slice.shape, dev_slice.shape, train_slice.shape)
 
     # Handle DEV-TRAIN
     # calc how much missing
@@ -317,23 +267,11 @@ def algorithm_v1(val_path: str) -> AlgorithmResults:
             # start from highest to lower
             delta_dev += int(dev_slice["recorded_count"].iat[-inx])
             # print('...step...', inx, delta_train, delta_dev)
-        # here we know
-        # if conf.VERBOSE:
-        #     print(
-        #         f"SWAP DEV-TRAIN {inx+1} VOICES, FOR {delta_train - delta_dev} RECORDINGS TO FILL {dev_missing} MISSING RECS IN DEV SPLIT"
-        #     )
-        # print('OLD TRAIN:\n', train_slice.head(inx+2))
-        # print('OLD DEV:\n', dev_slice.tail(inx+2))
+
         delta_dev_df: pd.DataFrame = dev_slice[-inx - 1 :]
         delta_train_df: pd.DataFrame = train_slice[: inx + 1]
         dev_slice: pd.DataFrame = pd.concat([dev_slice[: -inx - 1], delta_train_df])
         train_slice: pd.DataFrame = train_slice[inx + 1 :]
-        # print('DDEV:\n', delta_dev_df.head(inx+2))
-        # print('DTRAIN:\n', delta_train_df.head(inx+2))
-        # print('NEW TRAIN:\n', train_slice.head(inx+2))
-        # print('NEW DEV:\n', dev_slice.tail(inx+2))
-        # print('DELTAS:', delta_dev_df.shape, delta_train_df.shape)
-        # print('SLICES:', test_slice.shape, dev_slice.shape, train_slice.shape)
 
     # Here we have CUT OUT train, now we maybe add the swapped parts
     # print('DELTAS:', delta_test_df.shape, delta_dev_df.shape, delta_train_df.shape)
@@ -352,9 +290,6 @@ def algorithm_v1(val_path: str) -> AlgorithmResults:
     test_voices: "list[str]" = test_slice["v_enum"].unique().tolist()
     # select all validated records for that list
     test_df: pd.DataFrame = validated_df[validated_df["v_enum"].isin(test_voices)]
-    # test_recs: int = test_df.shape[0]
-    # # if conf.VERBOSE:
-    # #     print(f'--> TEST  split now has {test_recs} records with {total_test_sentences} distinct sentences from {total_test_voices} distinct voices (from {total_voices})')
 
     # Do it again for DEV
     # get a list of unique voice enum in dev set
@@ -363,12 +298,6 @@ def algorithm_v1(val_path: str) -> AlgorithmResults:
     total_dev_voices: int = len(dev_voices)
     # select all validated records for that list
     dev_df: pd.DataFrame = validated_df[validated_df["v_enum"].isin(dev_voices)]
-    # total_dev_sentences: int = len(
-    #     dev_df["s_enum"].unique().tolist()
-    # )  # get a list of unique voice enum in test set
-    # dev_recs: int = dev_df.shape[0]
-    # # if conf.VERBOSE:
-    # #     print(f'--> DEV   split now has {dev_recs} records with {total_dev_sentences} distinct sentences from {total_dev_voices} distinct voices (from {total_voices})')
 
     # Rest will be in TRAIN
     train_voices: "list[str]" = train_slice["v_enum"].unique().tolist()
@@ -376,26 +305,6 @@ def algorithm_v1(val_path: str) -> AlgorithmResults:
     total_train_voices: int = len(train_voices)
     # get remaining directly from validated
     train_df: pd.DataFrame = validated_df[validated_df["v_enum"].isin(train_voices)]
-    # total_train_sentences: int = len(
-    #     train_df["s_enum"].unique().tolist()
-    # )  # get a list of unique voice enum in test set
-    # train_recs: int = train_df.shape[0]
-    # if conf.VERBOSE:
-    #     # print(f'--> TRAIN split now has {train_recs} records with {total_train_sentences} distinct sentences from {total_train_voices} distinct voices (from {total_voices})')
-    #     tot_v: int = total_train_voices + total_dev_voices + total_test_voices
-    #     tot_r: int = train_recs + dev_recs + test_recs
-    #     print(
-    #         f'--> RESULT VOICES  (TRAIN + DEV + TEST) = {total_train_voices} ({dec2(100 * total_train_voices/tot_v)}%) + '
-    #         + f'{total_dev_voices} ({dec2(100 * total_dev_voices/tot_v)}%) + '
-    #         + f'{total_test_voices} ({dec3(100 * total_test_voices/tot_v)}%) = '
-    #         + f"{tot_v} (expecting {total_voices})"
-    #     )
-    #     print(
-    #         f'--> RESULT RECORDS (TRAIN + DEV + TEST) = {train_recs} ({dec2(100 * train_recs/tot_r)}%) + '
-    #         + f'{dev_recs} ({dec2(100 * dev_recs/tot_r)}%) + '
-    #         + f'{test_recs} ({dec2(100 * test_recs/tot_r)}%) = '
-    #         + f"{train_recs + dev_recs + test_recs} (expecting {total_validated})"
-    #     )
 
     # Remove extra columns
     test_df: pd.DataFrame = test_df.drop(
@@ -490,6 +399,9 @@ def main() -> None:
                 algorithm_v1, final_list, chunksize=chunk_size
             ):
                 pool_callback(result)
+
+    # remove temp directory structure
+    # _ = [shutil.rmtree(d) for d in glob.glob(os.path.join(HERE, ".temp", "*"), recursive=False)]
 
     final_report(g)
 
