@@ -22,7 +22,7 @@ This is where this tool comes in. You just put your data in directories and feed
 In the required execution order:
 
 - **extract.py** : Expands .tsv files (or all files with `--all` option) from downloaded .tar.gz dataset files in a directory, into another directory. If `--all` is not specified, audio files under `clips` are not expanded.
-- **collect_s1.py** : From the expanded datasets, copies necessary files to internal space to work on (these include common .tsv files and default split files).
+- **collect.py** : From the expanded datasets, copies necessary files to internal space to work on (these include common .tsv files and default split files).
 - **algorithm_xxx.py** : Different splitting algorithms to execute (see below)
 - **tbox_diversity_table.py** : The script will scan all experiments, versions, and languages under experiments directory and builds results/$diversity_data.tsv file containing everything. You can then take it and analyze further or use the Excel file provided.
 
@@ -61,10 +61,12 @@ Under `experiments/s1`, all .tsv files from the release can be found. Other algo
 The data we use is huge and not suited for github. We used the following:
 
 - s1: Default splits in datasets, created by the current Common Voice CorporaCreator (-s 1 default option)
-- s99: Alternative splits created by the current Common Voice CorporaCreator with -s 99 option, taking up to 99 recordings per sentence, i.e. nearly the whole dataset.
+- s5/s99: Alternative splits created by the current Common Voice CorporaCreator with -s 5 and 99 option, taking up to 5/99 recordings per sentence. 5 is a reasonabşle number anf 99 takes nearly the whole dataset.
 - v1: ("Voice First") Alternative split created by "algorithm-v1.py". This is a 80-10-10% (train-dev-test) splitting with 25-25-50% voice diversity (nearly) ensured. This algorithm has been suggested to Common Voice Project for being used as default splitting algorithm, with a report including a detailed analysis and some training results.
 - vw: ("Voice first for Whisper") A version of v1 for better OpenAI Whisper fine-tuning, with 90-5-5% splits, keeping 25-25-50% diversity (only available for Whisper languages).
 - vx: ("Voice first for eXternal test") A version of v1 with 95-5-0% splits and 50-50-0% diversity, so no test split, where you can test your model against other datasets like Fleurs or Voxpopuli (only available for Fleurs & Voxpopuli languages).
+
+For vw and vx we limited the process to only include datasets with >=2k recordings in validated bucket.
 
 Compressed splits for each language / dataset version / algorithm can be found under the [shared Google Drive location](https://drive.google.com/drive/folders/13c3VME_qRT1JSGjPue153K8FiDBH4QD2?usp=drive_link). To use them in your trainings, just download one and override the default train/dev/test.tsv files in your expanded dataset directory.
 
@@ -73,6 +75,24 @@ Compressed splits for each language / dataset version / algorithm can be found u
 ### License
 
 AGPL v3.0
+
+### Some Performance Metrics
+
+Here are some performance metrics I recorded on the following hardware after the release of Common Voice v16.1, where I re-implemented the multipprocessing and ran the whole set of algorithms (except s1, which I've taken from the releases) on all active CV releases (left out intermediate/corrected ones like v2, 5.0, 16.0 etc).
+
+- Intel i7 8700K 6 core / 12 tread @3.7/4.3 GHz, 48 GB DDR4 RAM @3000 GHz (>32 GB empty)
+- Compressed Data: On an external 8TB Seagate Backup+ HUB w. USB3 (100-110 MB/s, ~60-65 MB/s continuous read)
+- Expanded Data: On an internal Western Digital WD100EMAZ SATA 3 HDD (~90-120 MB/s R/W)
+- Working Data: On system drive 2TB Samsung 990 Pro (w. PCIe v3.0), thus ~3500/3500 MB/s R/W speed
+
+| Algo | Total DS | Processed DS | Total Dur | Avg Sec per DS |
+| ---- | -------: | -----------: | --------: | -------------: |
+| s99  |    1,222 |        1,207 |  05:40:02 |         16.904 |
+| v1   |    1,222 |        1,222 |  00:05:03 |          0.251 |
+| vw   |    1,222 |          633 |  00:03:32 |          0.336 |
+| vx   |    1,222 |          617 |  00:03:23 |          0.330 |
+
+DS: Dataset. All algorithms ran on 12 parallel processes
 
 ### TO-DO/Project plan, issues and feature requests
 
