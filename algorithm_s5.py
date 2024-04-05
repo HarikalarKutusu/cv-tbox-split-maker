@@ -45,7 +45,7 @@ import psutil
 # Module
 from typedef import AlgorithmSpecs, Globals
 from lib import LocalCorpus
-from lib import df_read, final_report
+from lib import df_read, final_report, remove_deleted_users
 import conf
 
 
@@ -86,10 +86,16 @@ def corpora_creator_original(val_path: str) -> bool:
 
     # call corpora creator with only validated (we don't need others)
     df_corpus: pd.DataFrame = df_read(val_path)
+    num_original: int = df_corpus.shape[0]
 
     # Must have records in it, else no go
-    if df_corpus.shape[0] == 0:
+    if num_original == 0:
         return False
+
+    # Remove users who requested data deletion
+    df_corpus = remove_deleted_users(df_corpus)
+    if num_original != df_corpus.shape[0] and conf.VERBOSE:
+        print(f"\nUSER RECORDS DELETED FROM VALIDATED {ver}-{lc} = {num_original - df_corpus.shape[0]}")
 
     # Here, it has records in it
     # create temp dir
@@ -126,7 +132,7 @@ def corpora_creator_original(val_path: str) -> bool:
 
 
 def main() -> None:
-    """Original Corpora Creator with -s 99 option for Common Voice Datasets"""
+    """Original Corpora Creator with -s 5 option for Common Voice Datasets"""
 
     #
     # Callback
@@ -184,14 +190,6 @@ def main() -> None:
     )
     print(f"Skipping {g.skipped_exists} as they already exist.")
 
-    # pbar = tqdm(total=g.src_cnt, unit="Dataset")
-    # with mp.Pool(PROC_COUNT) as pool:
-    #     for val_path in final_list:
-    #         pool.apply_async(
-    #             corpora_creator_original, args=(val_path,), callback=pool_callback
-    #         )
-    # pbar.close()
-
     chunk_size: int = min(10, g.src_cnt // PROC_COUNT + 0 if g.src_cnt % PROC_COUNT == 0 else 1)
 
     with mp.Pool(PROC_COUNT) as pool:
@@ -200,6 +198,9 @@ def main() -> None:
                 corpora_creator_original, final_list, chunksize=chunk_size
             ):
                 pool_callback(result)
+
+    # remove temp directory structure
+    # _ = [shutil.rmtree(d) for d in glob.glob(os.path.join(HERE, ".temp", "*"), recursive=False)]
 
     final_report(g)
 

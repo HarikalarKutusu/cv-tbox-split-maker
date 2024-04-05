@@ -26,6 +26,7 @@ A version of v1 algorithm which produces train & dev, where external dataset lik
 import os
 import sys
 import glob
+import shutil
 import multiprocessing as mp
 from multiprocessing.pool import AsyncResult
 from datetime import datetime
@@ -38,7 +39,7 @@ from tqdm import tqdm
 # Module
 from languages import LANGUAGES_ALLOWED
 from typedef import AlgorithmSpecs, AlgorithmResults, Globals
-from lib import df_read, df_write, final_report
+from lib import df_read, df_write, final_report, remove_deleted_users
 import conf
 
 #
@@ -84,8 +85,14 @@ def algorithm_vx(val_path: str) -> AlgorithmResults:
         print(f"Executing {ver} - {lc}", flush=True)
 
     validated_df: pd.DataFrame = df_read(val_path)
+    num_original: int = validated_df.shape[0]
 
+    # Remove users who requested data deletion
+    validated_df = remove_deleted_users(validated_df)
     total_validated: int = validated_df.shape[0]
+    if num_original != total_validated and conf.VERBOSE:
+        print(f"\nUSER RECORDS DELETED FROM VALIDATED {ver}-{lc} = {num_original - validated_df.shape[0]}")
+
     if total_validated == 0:
         results.tiny = 1
         results.skipped_nodata = 1
@@ -317,6 +324,9 @@ def main() -> None:
                 algorithm_vx, final_list, chunksize=chunk_size
             ):
                 pool_callback(result)
+
+    # remove temp directory structure
+    # _ = [shutil.rmtree(d) for d in glob.glob(os.path.join(HERE, ".temp", "*"), recursive=False)]
 
     final_report(g)
 
