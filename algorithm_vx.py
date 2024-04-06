@@ -91,7 +91,9 @@ def algorithm_vx(val_path: str) -> AlgorithmResults:
     validated_df = remove_deleted_users(validated_df)
     total_validated: int = validated_df.shape[0]
     if num_original != total_validated and conf.VERBOSE:
-        print(f"\nUSER RECORDS DELETED FROM VALIDATED {ver}-{lc} = {num_original - validated_df.shape[0]}")
+        print(
+            f"\nUSER RECORDS DELETED FROM VALIDATED {ver}-{lc} = {num_original - validated_df.shape[0]}"
+        )
 
     if total_validated == 0:
         results.tiny = 1

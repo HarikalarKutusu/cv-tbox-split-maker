@@ -103,7 +103,9 @@ def algorithm_v1(val_path: str) -> AlgorithmResults:
     # Remove users who requested data deletion
     validated_df = remove_deleted_users(validated_df)
     if num_original != validated_df.shape[0] and conf.VERBOSE:
-        print(f"\nUSER RECORDS DELETED FROM VALIDATED {ver}-{lc} = {num_original - validated_df.shape[0]}")
+        print(
+            f"\nUSER RECORDS DELETED FROM VALIDATED {ver}-{lc} = {num_original - validated_df.shape[0]}"
+        )
 
     # add lowercase sentence column
     validated_df["sentence_lower"] = validated_df["sentence"].str.lower()
@@ -391,7 +393,9 @@ def main() -> None:
     )
     print(f"Skipping {g.skipped_exists} as they already exist.")
 
-    chunk_size: int = min(10, g.src_cnt // PROC_COUNT + 0 if g.src_cnt % PROC_COUNT == 0 else 1)
+    chunk_size: int = min(
+        10, g.src_cnt // PROC_COUNT + 0 if g.src_cnt % PROC_COUNT == 0 else 1
+    )
 
     with mp.Pool(PROC_COUNT) as pool:
         with tqdm(total=g.src_cnt) as pbar:

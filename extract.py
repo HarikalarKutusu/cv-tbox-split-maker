@@ -94,7 +94,9 @@ def main(extract_all: bool = False, forced: bool = False) -> None:
         # Low number of cores only to prevent HDD trashing
         proc_count: int = min(MINIMAL_PROCS, psutil.cpu_count(logical=False))
 
-        print(f"Extracting ALL files from {src_cnt}/{total_cnt} compressed datasets in {proc_count} processes")
+        print(
+            f"Extracting ALL files from {src_cnt}/{total_cnt} compressed datasets in {proc_count} processes"
+        )
         if conf.FORCE_CREATE:
             print("Expanding even the destination exists (force_create)")
         elif total_cnt > src_cnt:

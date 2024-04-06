@@ -86,7 +86,9 @@ def algorithm_vw(val_path: str) -> AlgorithmResults:
     validated_df = remove_deleted_users(validated_df)
     total_validated: int = validated_df.shape[0]
     if num_original != total_validated and conf.VERBOSE:
-        print(f"\nUSER RECORDS DELETED FROM VALIDATED {ver}-{lc} = {num_original - validated_df.shape[0]}")
+        print(
+            f"\nUSER RECORDS DELETED FROM VALIDATED {ver}-{lc} = {num_original - validated_df.shape[0]}"
+        )
 
     if total_validated == 0:
         results.tiny = 1
@@ -352,7 +354,9 @@ def main() -> None:
     print(
         f"Re-splitting for {g.src_cnt} out of {g.total_cnt} corpora in {PROC_COUNT} processes."
     )
-    print(f"Skipping Existing: {g.skipped_exists} & Not Supported: {g.skipped_nosupport}")
+    print(
+        f"Skipping Existing: {g.skipped_exists} & Not Supported: {g.skipped_nosupport}"
+    )
 
     chunk_size: int = g.src_cnt // PROC_COUNT + 0 if g.src_cnt % PROC_COUNT == 0 else 1
 

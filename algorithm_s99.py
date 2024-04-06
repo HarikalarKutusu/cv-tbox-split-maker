@@ -95,7 +95,9 @@ def corpora_creator_original(val_path: str) -> bool:
     # Remove users who requested data deletion
     df_corpus = remove_deleted_users(df_corpus)
     if num_original != df_corpus.shape[0] and conf.VERBOSE:
-        print(f"\nUSER RECORDS DELETED FROM VALIDATED {ver}-{lc} = {num_original - df_corpus.shape[0]}")
+        print(
+            f"\nUSER RECORDS DELETED FROM VALIDATED {ver}-{lc} = {num_original - df_corpus.shape[0]}"
+        )
 
     # Here, it has records in it
     # create temp dir
@@ -190,7 +192,9 @@ def main() -> None:
     )
     print(f"Skipping {g.skipped_exists} as they already exist.")
 
-    chunk_size: int = min(10, g.src_cnt // PROC_COUNT + 0 if g.src_cnt % PROC_COUNT == 0 else 1)
+    chunk_size: int = min(
+        10, g.src_cnt // PROC_COUNT + 0 if g.src_cnt % PROC_COUNT == 0 else 1
+    )
 
     with mp.Pool(PROC_COUNT) as pool:
         with tqdm(total=g.src_cnt) as pbar:
