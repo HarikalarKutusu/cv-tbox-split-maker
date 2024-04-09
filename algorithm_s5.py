@@ -153,7 +153,7 @@ def main() -> None:
     #
 
     print(
-        "=== Original Corpora Creator with -s 99 option for Common Voice Datasets ==="
+        "=== Original Corpora Creator with -s 5 option for Common Voice Datasets ==="
     )
 
     # Paths
