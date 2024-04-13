@@ -127,7 +127,10 @@ CV_LANGUAGES: list[str] = [
     "zza",
 ]
 
+# Updated on April 2024 from https://github.com/openai/whisper/blob/main/whisper/tokenizer.py
 WHISPER_LANGUAGES: list[str] = [
+    "af",
+    "am",
     "ar",
     "as",
     "az",
@@ -135,9 +138,11 @@ WHISPER_LANGUAGES: list[str] = [
     "be",
     "bg",
     "bn",
+    "bo",
     "br",
+    "bs",
     "ca",
-    "cv",
+    "cs",
     "cy",
     "da",
     "de",
@@ -148,53 +153,82 @@ WHISPER_LANGUAGES: list[str] = [
     "eu",
     "fa",
     "fi",
+    "fo",
     "fr",
     "gl",
+    "gu-IN", # gujarati "gu" in Whisper
     "ha",
+    "haw", # Hawaiian - NOT IN CV
+    "he",
     "hi",
+    "hr",
+    "ht",
     "hu",
-    "hy-AM",
+    "hy-AM", # armenian "hy" in Whisper
     "id",
     "is",
     "it",
     "ja",
+    "jv", # javanese "jw" in Whisper
     "ka",
     "kk",
+    "km",
+    "kn",
     "ko",
+    "la", # latin - NOT IN CV
+    "lb",
+    "ln",
     "lo",
     "lt",
     "lv",
+    "mg",
+    "mi", # maori - NOT IN CV
     "mk",
     "ml",
     "mn",
     "mr",
+    "ms",
     "mt",
-    "ne-NP",
+    "my", # Myanmar - Burmese in CV
+    "ne-NP", # nepali "ne" in Whisper
     "nl",
-    "nn-NO",
+    "nn-NO", # nynorsk "nn" in Whisper
+    "no", # norwegian => nb-NO ? (Norwegian Bokmål) in CV? (not yet released)
     "oc",
-    "pa-IN",
+    "pa-IN", # punjabi "pa" in Whisper
     "pl",
+    "ps",
     "pt",
     "ro",
     "ru",
+    "sa", # sanskrit - NOT IN CV
+    "sd",
+    "si",
     "sk",
     "sl",
+    "sn", # shona - NOT IN CV
+    "so",
+    "sq",
     "sr",
-    "sv-SE",
+    "su", # sundanese - NOT IN CV
+    "sv-SE", # swedish "sv" in Whisper
     "sw",
     "ta",
+    "te",
+    "tg",
     "th",
     "tk",
+    "tl",
     "tr",
     "tt",
     "uk",
     "ur",
     "uz",
     "vi",
+    "yi",
     "yo",
     "yue",
-    "zh-CN",
+    "zh-CN", # chinese "zh" in Whisper
 ]
 
 FLEURS_LANGUAGES: list[str] = [
@@ -287,3 +321,38 @@ VOXPOPULI_LANGUAGES: list[str] = [
 
 # LANGUAGES WITH EXTERNAL TEST SET
 LANGUAGES_ALLOWED: list[str] = sorted(list(set(VOXPOPULI_LANGUAGES + FLEURS_LANGUAGES)))
+
+#
+# CV - WHISPER language codes: Unmatched ones
+#
+# 'bo', # Tibetan - IN PROGRESS
+# 'bs', # Bosnian - IN PROGRESS
+# 'fo', # faroese - IN PROGRESS
+# 'gu', # gujarati => gu-IN - IN PROGRESS
+# 'haw', # hawaiian - NOT IN CV
+# 'hr', # croatian - IN PROGRESS
+# 'hy', # armenian => hy-AM
+# 'jw', # javanese => jv
+# 'km', # Khmer - IN PROGRESS
+# 'kn', # kannada - IN PROGRESS
+# 'la', # latin - NOT IN CV
+# 'lb', # luxembourgish - IN PROGRESS
+# 'ln', # lingala - IN PROGRESS
+# 'mg', # malagasy - IN PROGRESS
+# 'mi', # maori - NOT IN CV
+# 'ms', # malay - IN PROGRESS
+# 'my', # Myanmar - Burmese in CV
+# 'ne', # nepali => ne-NP
+# 'nn', # nynorsk => nn-NO (Norwegian Nynorsk)
+# 'no', # norwegian => nb-NO (Norwegian Bokmål ???)
+# 'pa', # punjabi => pa-IN
+# 'sa', # sanskrit - NOT IN CV
+# 'sd', # sindhi - IN PROGRESS
+# 'si', # sinhala - IN PROGRESS
+# 'sn', # shona - NOT IN CV
+# 'so', # somali - IN PROGRESS
+# 'su', # sundanese - NOT IN CV
+# 'sv', # swedish => sv-SE
+# 'tg', # tajik - IN PROGRESS
+# 'tl', # tagalog - IN PROGRESS
+# 'zh' # chinese => zh-CN
