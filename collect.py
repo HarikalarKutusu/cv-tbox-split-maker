@@ -64,6 +64,6 @@ def main() -> None:
 if __name__ == "__main__":
     # [TODO] : use command line args
     # args_src_dir: str = "m:\\DATASETS\\cv\\cv-corpus-16.0-2023-12-06"
-    args_src_dir: str = os.path.join(conf.CV_DATASET_BASE_DIR, conf.CV_DATASET_VERSION)
+    args_src_dir: str = os.path.join(conf.CV_METADATA_BASE_DIR, conf.CV_DATASET_VERSION)
 
     main()

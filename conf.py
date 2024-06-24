@@ -7,10 +7,11 @@ import os
 
 CV_COMPRESSED_BASE_DIR: str = os.path.join("V:", os.sep, "DATASETS", "VOICE", "CV")
 CV_DATASET_BASE_DIR: str = os.path.join("M:", os.sep, "DATASETS", "CV")
+CV_METADATA_BASE_DIR: str = os.path.join("T:", os.sep, "TBOX", "ds_meta", "cv")
 
 # Latest Version to work on
 
-CV_DATASET_VERSION: str = "cv-corpus-17.0-2024-03-15"
+CV_DATASET_VERSION: str = "cv-corpus-18.0-2024-06-14"
 
 # Splitting Parameters
 
