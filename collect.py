@@ -49,10 +49,12 @@ def main() -> None:
         if os.path.isdir(src_lc_dir):
             lc: str = os.path.split(src_lc_dir)[-1]
             dst_dir: str = os.path.join(HERE, "experiments", "s1", release_name, lc)
-            os.makedirs(dst_dir, exist_ok=True)
-            files: list[str] = glob.glob(os.path.join(src_lc_dir, "*.tsv"))
-            for f in files:
-                shutil.copy2(f, dst_dir)
+            # skip existings
+            if not os.path.isdir(dst_dir):
+                os.makedirs(dst_dir, exist_ok=True)
+                files: list[str] = glob.glob(os.path.join(src_lc_dir, "*.tsv"))
+                for f in files:
+                    shutil.copy2(f, dst_dir)
         pbar.update()
     # finalize
     pbar.close()
