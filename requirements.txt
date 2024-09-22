@@ -1,8 +1,9 @@
-setuptools
-pandas
-pyarrow
-psutil
-tqdm
-av
+# Use Python v3.12.x or greater
+setuptools>=75.1.0
+pandas>=2.2.3
+pyarrow>=17.0.0
+psutil>=6.0.0
+tqdm>=4.66.5
+av>=13.0.0
 git+https://github.com/ftyers/commonvoice-utils.git@main
 git+https://github.com/common-voice/CorporaCreator.git@master
