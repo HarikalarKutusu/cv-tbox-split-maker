@@ -34,17 +34,20 @@ import sys
 import shutil
 import glob
 import logging
+import multiprocessing as mp
+import threading
 
 # External dependencies
 from tqdm import tqdm
 from corporacreator import parse_args
 import pandas as pd
+import psutil
 import av
 
 # Module
 import conf
 from typedef import AlgorithmSpecs, Globals
-from lib import LocalCorpus, df_read, df_write, final_report
+from lib import LocalCorpus, df_read, df_write, final_report, remove_deleted_users
 
 # Get rid of warnings
 logging.getLogger("libav").setLevel(logging.ERROR)
@@ -53,19 +56,19 @@ logging.getLogger("libav").setLevel(logging.ERROR)
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
     sys.path.append(HERE)
+PROC_COUNT: int = psutil.cpu_count(logical=True)  # Full usage
+output_lock = threading.Lock()
 
 g = Globals()
 aspecs = AlgorithmSpecs(
-    src_algo_dir="s1", dst_algo_dir="s1", duplicate_sentence_count=1
+    src_algo_dir="s1",
+    dst_algo_dir="s1",
+    duplicate_sentence_count=1,
 )
 
 #
 # Constants - TODO These should be arguments
 #
-
-# Directories
-USE_SOURCE_DATASET_DIR: bool = True
-DO_CALC_CLIP_DURATIONS: bool = True
 
 # DF related (for clip durations)
 CDUR_COLS: list[str] = ["clip", "duration[ms]"]
@@ -79,47 +82,114 @@ CDUR_ERR_FN: str = "$clip_durations_errors.tsv"
 #
 
 
-def corpora_creator_original(
-    lc: str, val_path: str, dst_path: str, duplicate_sentences: int
-) -> bool:
-    """Processes validated.tsv and create new train, dev, test splits"""
+# def corpora_creator_original(
+#     lc: str, val_path: str, dst_path: str, duplicate_sentences: int
+# ) -> bool:
+#     """Processes validated.tsv and create new train, dev, test splits"""
 
-    # Assume result false
-    res: bool = False
+#     # Assume result false
+#     res: bool = False
+#     # temp dir
+#     temp_path: str = os.path.join(HERE, ".temp")
+
+#     # call corpora creator with only validated (we don't need others)
+#     df_corpus: pd.DataFrame = df_read(val_path)
+
+#     # Must have records in it
+#     if df_corpus.shape[0] > 0:
+#         # create temp dir
+#         os.makedirs(temp_path, exist_ok=True)
+
+#         # handle corpus
+#         args: Namespace = parse_args(
+#             ["-d", temp_path, "-f", val_path, "-s", str(duplicate_sentences)]
+#         )
+#         corpus: LocalCorpus = LocalCorpus(args, lc, df_corpus)
+#         corpus.create()
+#         corpus.save(temp_path)
+
+#         # move required files to destination
+#         os.makedirs(dst_path, exist_ok=True)
+#         shutil.move(os.path.join(temp_path, lc, "train.tsv"), dst_path)
+#         shutil.move(os.path.join(temp_path, lc, "dev.tsv"), dst_path)
+#         shutil.move(os.path.join(temp_path, lc, "test.tsv"), dst_path)
+#         shutil.rmtree(temp_path)
+
+#         res = True
+
+#     return res
+
+#
+# PROCESS
+# Handle one split creation, this is where calculations happen
+#
+
+
+# def corpora_creator_original(lc: str, val_path: str, dst_path: str, duplicate_sentences: int) -> bool:
+def corpora_creator_original(val_path: str) -> bool:
+    """Processes validated.tsv and create new train, dev, test splits"""
+    dst_exppath: str = os.path.join(
+        conf.SM_DATA_DIR, "experiments", aspecs.dst_algo_dir
+    )
+    # results: list[bool] = []
+
+    src_corpus_dir: str = os.path.split(val_path)[0]
+    lc: str = os.path.split(src_corpus_dir)[1]
+    ver: str = os.path.split(os.path.split(src_corpus_dir)[0])[1]
+    dst_corpus_dir: str = os.path.join(dst_exppath, ver, lc)
+
     # temp dir
-    temp_path: str = os.path.join(HERE, ".temp")
+    temp_path: str = os.path.join(HERE, ".temp", ver, lc)
 
     # call corpora creator with only validated (we don't need others)
     df_corpus: pd.DataFrame = df_read(val_path)
+    num_original: int = df_corpus.shape[0]
 
-    # Must have records in it
-    if df_corpus.shape[0] > 0:
-        # create temp dir
-        os.makedirs(temp_path, exist_ok=True)
+    # Must have records in it, else no go
+    if num_original == 0:
+        return False
 
-        # handle corpus
-        args: Namespace = parse_args(
-            ["-d", temp_path, "-f", val_path, "-s", str(duplicate_sentences)]
+    # Remove users who requested data deletion
+    df_corpus = remove_deleted_users(df_corpus)
+    if num_original != df_corpus.shape[0] and conf.VERBOSE:
+        print(
+            f"\nUSER RECORDS DELETED FROM VALIDATED {ver}-{lc} = {num_original - df_corpus.shape[0]}"
         )
-        corpus: LocalCorpus = LocalCorpus(args, lc, df_corpus)
-        corpus.create()
-        corpus.save(temp_path)
 
-        # move required files to destination
-        os.makedirs(dst_path, exist_ok=True)
-        shutil.move(os.path.join(temp_path, lc, "train.tsv"), dst_path)
-        shutil.move(os.path.join(temp_path, lc, "dev.tsv"), dst_path)
-        shutil.move(os.path.join(temp_path, lc, "test.tsv"), dst_path)
-        shutil.rmtree(temp_path)
+    # Here, it has records in it
+    # create temp dir
+    os.makedirs(temp_path, exist_ok=True)
 
-        res = True
+    # handle corpus
+    cc_args: Namespace = parse_args(
+        [
+            "-d",
+            temp_path,
+            "-f",
+            val_path,
+            "-s",
+            str(aspecs.duplicate_sentence_count),
+        ]
+    )
+    corpus: LocalCorpus = LocalCorpus(cc_args, lc, df_corpus)
+    corpus.create()
+    corpus.save(temp_path)
 
-    return res
+    # move required files to destination
+    os.makedirs(dst_corpus_dir, exist_ok=True)
+    shutil.move(os.path.join(temp_path, lc, "train.tsv"), dst_corpus_dir)
+    shutil.move(os.path.join(temp_path, lc, "dev.tsv"), dst_corpus_dir)
+    shutil.move(os.path.join(temp_path, lc, "test.tsv"), dst_corpus_dir)
+    shutil.rmtree(os.path.join(temp_path, lc))
+
+    return True
 
 
 #
-# Main loop for experiments-versions-locales
+# Clip Durations
 #
+
+
 # Main Loop for Clips
 def build_clip_durations_table(srcdir):
     """
@@ -201,11 +271,6 @@ def build_clip_durations_table(srcdir):
         df_write(df, fpath=os.path.join(srcdir, CDUR_ERR_FN))
 
 
-#
-# Main loop for experiments-versions-locales
-#
-
-
 def handle_clip_durations():
     """Refresh cklip durations if they do not exist"""
     print("=== REFRESH CLIP DURATIONS ===")
@@ -238,13 +303,34 @@ def handle_clip_durations():
             print("Skip:", inx, "/".join(clips_dir.split(os.sep)[-4:]))
 
 
-def main() -> None:
+#
+# Main loop for experiments-versions-locales
+#
+
+
+def main(collect: bool, calc_durations: bool) -> None:
     """
     Original Corpora Creator with -s 1 option for Common Voice Datasets (if splits are not provided)
     """
     print(
         "=== Original Corpora Creator with -s 1 option for Common Voice Datasets (if splits are not provided) ==="
     )
+
+    #
+    # Callback
+    #
+
+    def pool_callback(res: bool) -> None:
+        """Callback to append results and increment bar"""
+        pbar.update()
+        if res:
+            g.processed_cnt += 1
+        else:
+            g.skipped_nodata += 1
+
+    #
+    # Main
+    #
 
     # Copy source experiment tree to destination experiment
     src_exppath: str = os.path.join(
@@ -255,11 +341,11 @@ def main() -> None:
     )
 
     # Calculate clip durations?
-    if DO_CALC_CLIP_DURATIONS:
+    if calc_durations:
         handle_clip_durations()
 
     # Do we want to copy the .tsv files from original expanded datasets?
-    if USE_SOURCE_DATASET_DIR:
+    if collect:
         # copy all .tsv files while forming structure
         print("=== COPY .TSV FILES FROM DATASETS ===")
         copyto_corpus_dir: str = os.path.join(src_exppath, conf.CV_FULL_VERSION)
@@ -271,68 +357,102 @@ def main() -> None:
             ignore=shutil.ignore_patterns("*.mp3"),
         )
 
+    # # Get total for progress display
+    # all_validated: "list[str]" = glob.glob(
+    #     os.path.join(src_exppath, "**", "validated.tsv"), recursive=True
+    # )
+    # print(
+    #     f"Re-splitting for {len(all_validated)} corpora... Wait for final structure is formed..."
+    # )
+    # print()  # extra line is for progress line
+
+    # # For each corpus
+    # g.start_time = datetime.now()
+    # g.total_cnt = len(all_validated)
+    # g.processed_cnt = 0  # count of corpora checked
+
+    # for val_path in all_validated:
+    #     src_corpus_dir: str = os.path.split(val_path)[0]
+    #     lc: str = os.path.split(src_corpus_dir)[1]
+    #     ver: str = os.path.split(os.path.split(src_corpus_dir)[0])[1]
+    #     dst_corpus_dir: str = os.path.join(dst_exppath, ver, lc)
+
+    #     g.processed_cnt += 1
+    #     if conf.VERBOSE:
+    #         print(f"\n=== Processing {g.processed_cnt}/{g.total_cnt} => {ver} - {lc}")
+    #     else:
+    #         print("\033[F" + " " * 80)
+    #         print(f"\033[FProcessing {g.processed_cnt}/{g.total_cnt} => {ver} - {lc}")
+
+    #     if not conf.FORCE_CREATE and os.path.isfile(
+    #         os.path.join(dst_corpus_dir, "train.tsv")
+    #     ):
+    #         # Already there and is not forced to recreate, so skip
+    #         g.skipped_exists += 1
+    #     else:
+    #         if not corpora_creator_original(  # df might be empty, thus returns false
+    #             lc=lc,
+    #             val_path=val_path,
+    #             dst_path=dst_corpus_dir,
+    #             duplicate_sentences=aspecs.duplicate_sentence_count,
+    #         ):
+    #             g.skipped_exists += 1
+    #         print()
+
+    # final_report(g)
+
     # Get total for progress display
     all_validated: "list[str]" = glob.glob(
         os.path.join(src_exppath, "**", "validated.tsv"), recursive=True
     )
-    print(
-        f"Re-splitting for {len(all_validated)} corpora... Wait for final structure is formed..."
-    )
-    print()  # extra line is for progress line
 
     # For each corpus
     g.start_time = datetime.now()
-    g.total_cnt = len(all_validated)
-    g.processed_cnt = 0  # count of corpora checked
+    final_list: list[str] = []
 
-    for val_path in all_validated:
-        src_corpus_dir: str = os.path.split(val_path)[0]
-        lc: str = os.path.split(src_corpus_dir)[1]
-        ver: str = os.path.split(os.path.split(src_corpus_dir)[0])[1]
-        dst_corpus_dir: str = os.path.join(dst_exppath, ver, lc)
-
-        g.processed_cnt += 1
-        if conf.VERBOSE:
-            print(f"\n=== Processing {g.processed_cnt}/{g.total_cnt} => {ver} - {lc}")
-        else:
-            print("\033[F" + " " * 80)
-            print(f"\033[FProcessing {g.processed_cnt}/{g.total_cnt} => {ver} - {lc}")
-
-        if not conf.FORCE_CREATE and os.path.isfile(
-            os.path.join(dst_corpus_dir, "train.tsv")
-        ):
-            # Already there and is not forced to recreate, so skip
-            g.skipped_exists += 1
-        else:
-            if not corpora_creator_original(  # df might be empty, thus returns false
-                lc=lc,
-                val_path=val_path,
-                dst_path=dst_corpus_dir,
-                duplicate_sentences=aspecs.duplicate_sentence_count,
-            ):
+    # clean unneeded/skipped
+    if conf.FORCE_CREATE:
+        final_list = all_validated
+    else:
+        for p in all_validated:
+            src_corpus_dir: str = os.path.split(p)[0]
+            lc: str = os.path.split(src_corpus_dir)[1]
+            ver: str = os.path.split(os.path.split(src_corpus_dir)[0])[1]
+            dst_corpus_dir: str = os.path.join(dst_exppath, ver, lc)
+            if os.path.isfile(os.path.join(dst_corpus_dir, "train.tsv")):
                 g.skipped_exists += 1
-            print()
+            else:
+                final_list.append(p)
+
+    g.total_cnt = len(all_validated)
+    g.src_cnt = len(final_list)
+
+    # schedule mp
+    print(
+        f"Splitting {g.src_cnt} out of {g.total_cnt} corpora in {PROC_COUNT} processes."
+    )
+    print(f"Skipped {g.skipped_exists} as they already exist.")
+
+    chunk_size: int = min(
+        10, g.src_cnt // PROC_COUNT + 0 if g.src_cnt % PROC_COUNT == 0 else 1
+    )
+
+    with mp.Pool(PROC_COUNT) as pool:
+        with tqdm(total=g.src_cnt) as pbar:
+            for result in pool.imap_unordered(
+                corpora_creator_original, final_list, chunksize=chunk_size
+            ):
+                pool_callback(result)
+
+    # remove temp directory structure
+    # _ = [shutil.rmtree(d) for d in glob.glob(os.path.join(HERE, ".temp", "*"), recursive=False)]
 
     final_report(g)
 
-    # g.finish_time = datetime.now()
-    # g.process_seconds = (g.finish_time - g.start_time).total_seconds()
-    # avg_seconds: float = g.process_seconds / g.total_cnt
-    # cnt_really_processed: int = g.processed_cnt - g.skipped_exists - g.skipped_nodata
-    # avg_seconds_new: float = -1
-    # if cnt_really_processed > 0:
-    #     avg_seconds_new = g.process_seconds / cnt_really_processed
-    # print("\n" + "-" * 80)
-    # print(
-    #     f"Finished processing of {g.total_cnt} corpora in {str(g.process_seconds)} secs,"
-    #     + f"avg duration {dec3(avg_seconds)} secs"
-    # )
-    # print(f"Processed: {g.processed_cnt}, Skipped: {g.skipped_exists}, New: {cnt_really_processed}")
-    # if cnt_really_processed > 0:
-    #     print(
-    #         f'Avg. time new split creation: {dec3(avg_seconds_new)} secs'
-    #     )
-
 
 if __name__ == "__main__":
-    main()
+    args: list[str] = sys.argv
+    arg_collect: bool = "--collect" in args
+    arg_calc_durations: bool = "--durations" in args
+
+    main(arg_collect, arg_calc_durations)
