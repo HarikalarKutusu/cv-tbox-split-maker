@@ -35,10 +35,10 @@ if not HERE in sys.path:
     sys.path.append(HERE)
 
 
-def main() -> None:
+def main(src_dir: str) -> None:
     """Main process"""
-    release_name: str = os.path.split(args_src_dir)[-1]
-    src_locale_dirs: list[str] = glob.glob(os.path.join(args_src_dir, "*"))
+    release_name: str = os.path.split(src_dir)[-1]
+    src_locale_dirs: list[str] = glob.glob(os.path.join(src_dir, "*"))
     total_cnt: int = len(src_locale_dirs)
     print(f"Copying .TSV files from {total_cnt} locales")
     pbar = tqdm(total=total_cnt, unit=" Dataset")
@@ -52,7 +52,7 @@ def main() -> None:
                 conf.SM_DATA_DIR, "experiments", "s1", release_name, lc
             )
             # skip existings
-            if not os.path.isdir(dst_dir):
+            if not os.path.isdir(dst_dir) and not conf.FORCE_CREATE:
                 os.makedirs(dst_dir, exist_ok=True)
                 files: list[str] = glob.glob(os.path.join(src_lc_dir, "*.tsv"))
                 for f in files:
@@ -70,4 +70,4 @@ if __name__ == "__main__":
     # args_src_dir: str = "m:\\DATASETS\\cv\\cv-corpus-16.0-2023-12-06"
     args_src_dir: str = os.path.join(conf.CV_METADATA_BASE_DIR, conf.CV_FULL_VERSION)
 
-    main()
+    main(args_src_dir)

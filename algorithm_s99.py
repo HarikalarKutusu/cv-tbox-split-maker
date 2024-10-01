@@ -106,7 +106,7 @@ def corpora_creator_original(val_path: str) -> bool:
     os.makedirs(temp_path, exist_ok=True)
 
     # handle corpus
-    args: Namespace = parse_args(
+    cc_args: Namespace = parse_args(
         [
             "-d",
             temp_path,
@@ -116,7 +116,7 @@ def corpora_creator_original(val_path: str) -> bool:
             str(aspecs.duplicate_sentence_count),
         ]
     )
-    corpus: LocalCorpus = LocalCorpus(args, lc, df_corpus)
+    corpus: LocalCorpus = LocalCorpus(cc_args, lc, df_corpus)
     corpus.create()
     corpus.save(temp_path)
 
