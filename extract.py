@@ -11,7 +11,7 @@
 #
 # This script is part of Common Voice ToolBox Package
 #
-# github: https://github.com/HarikalarKutusu/common-voice-diversity-check
+# github: https://github.com/HarikalarKutusu/cv-tbox-split-maker
 # Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
@@ -44,7 +44,7 @@ MINIMAL_PROCS: int = 2
 def extract_all_process(p: str) -> int:
     """Multiprocessing handler for full extraction"""
     with tarfile.open(p) as tar:
-        tar.extractall(conf.CV_DATASET_BASE_DIR)
+        tar.extractall(conf.CV_EXTRACTED_BASE_DIR)
     return 1
 
 
@@ -53,35 +53,47 @@ def extract_tsv_process(p: str) -> int:
     pat: re.Pattern[str] = re.compile(r"^.*\.tsv")
     with tarfile.open(p) as tar:
         tar.extractall(
-            conf.CV_DATASET_BASE_DIR,
+            conf.CV_EXTRACTED_BASE_DIR,
             members=[m for m in tar.getmembers() if pat.search(m.name)],
         )
     return 1
 
 
-def main(extract_all: bool = False, forced: bool = False) -> None:
+def main(
+    is_delta: bool = False, extract_all: bool = False, forced: bool = False
+) -> None:
     """Main process"""
 
     # get compressed files list
-    all_files: list[str] = glob.glob(
-        os.path.join(conf.CV_COMPRESSED_BASE_DIR, conf.CV_DATASET_VERSION, "*")
-    )
+    all_files: list[str]
+    if is_delta:
+        all_files = glob.glob(
+            os.path.join(conf.CV_COMPRESSED_BASE_DIR, conf.CV_DELTA_VERSION, "*")
+        )
+        print("Searching for DELTA release files")
+    else:
+        all_files = glob.glob(
+            os.path.join(conf.CV_COMPRESSED_BASE_DIR, conf.CV_FULL_VERSION, "*")
+        )
+        print("Searching for FULL release files")
     total_cnt: int = len(all_files)
+    print(f"Found {total_cnt} .tar.gz files")
 
     start_time: datetime = datetime.now()
     src_files: list[str] = all_files if conf.FORCE_CREATE or forced else []
 
-    dst_base: str = os.path.join(conf.CV_DATASET_BASE_DIR, conf.CV_DATASET_VERSION)
+    dst_base: str = os.path.join(conf.CV_EXTRACTED_BASE_DIR, conf.CV_FULL_VERSION)
     dst_check: str = ""
     os.makedirs(dst_base, exist_ok=True)
 
     if extract_all:
         # remove already extracted ones from the list
         if not (conf.FORCE_CREATE or forced):
+            print("Detecting already processed languages")
             for p in all_files:
                 lc: str = (
                     os.path.split(p)[-1]
-                    .replace(conf.CV_DATASET_VERSION + "-", "")
+                    .replace(conf.CV_FULL_VERSION + "-", "")
                     .replace(".tar.gz", "")
                     .replace(".tar", "")
                 )
@@ -114,10 +126,11 @@ def main(extract_all: bool = False, forced: bool = False) -> None:
     else:
         # remove already extracted ones from the list
         if not (conf.FORCE_CREATE or forced):
+            print("Detecting already processed languages")
             for p in all_files:
                 lc: str = (
                     os.path.split(p)[-1]
-                    .replace(conf.CV_DATASET_VERSION + "-", "")
+                    .replace(conf.CV_FULL_VERSION + "-", "")
                     .replace(".tar.gz", "")
                     .replace(".tar", "")
                 )
@@ -154,6 +167,7 @@ def main(extract_all: bool = False, forced: bool = False) -> None:
 
 if __name__ == "__main__":
     args: list[str] = sys.argv
+    arg_delta: bool = "--delta" in args
     arg_all: bool = "--all" in args
     arg_force: bool = "--force" in args
-    main(arg_all, arg_force)
+    main(arg_delta, arg_all, arg_force)
