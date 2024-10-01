@@ -20,7 +20,7 @@ Standard Common Voice CorporaCreator algorithm with 99 recordings for a sentence
 #
 # This script is part of Common Voice ToolBox Package
 #
-# github: https://github.com/HarikalarKutusu/common-voice-diversity-check
+# github: https://github.com/HarikalarKutusu/cv-tbox-split-maker
 # Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
@@ -73,7 +73,9 @@ aspecs = AlgorithmSpecs(
 # def corpora_creator_original(lc: str, val_path: str, dst_path: str, duplicate_sentences: int) -> bool:
 def corpora_creator_original(val_path: str) -> bool:
     """Processes validated.tsv and create new train, dev, test splits"""
-    dst_exppath: str = os.path.join(HERE, "experiments", aspecs.dst_algo_dir)
+    dst_exppath: str = os.path.join(
+        conf.SM_DATA_DIR, "experiments", aspecs.dst_algo_dir
+    )
     # results: list[bool] = []
 
     src_corpus_dir: str = os.path.split(val_path)[0]
@@ -157,8 +159,12 @@ def main() -> None:
     )
 
     # Paths
-    src_exppath: str = os.path.join(HERE, "experiments", aspecs.src_algo_dir)
-    dst_exppath: str = os.path.join(HERE, "experiments", aspecs.dst_algo_dir)
+    src_exppath: str = os.path.join(
+        conf.SM_DATA_DIR, "experiments", aspecs.src_algo_dir
+    )
+    dst_exppath: str = os.path.join(
+        conf.SM_DATA_DIR, "experiments", aspecs.dst_algo_dir
+    )
 
     # Get total for progress display
     all_validated: "list[str]" = glob.glob(

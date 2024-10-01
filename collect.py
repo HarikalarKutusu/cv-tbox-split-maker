@@ -10,7 +10,7 @@
 #
 # This script is part of Common Voice ToolBox Package
 #
-# github: https://github.com/HarikalarKutusu/common-voice-diversity-check
+# github: https://github.com/HarikalarKutusu/cv-tbox-split-maker
 # Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
@@ -48,7 +48,9 @@ def main() -> None:
         cnt += 1
         if os.path.isdir(src_lc_dir):
             lc: str = os.path.split(src_lc_dir)[-1]
-            dst_dir: str = os.path.join(HERE, "experiments", "s1", release_name, lc)
+            dst_dir: str = os.path.join(
+                conf.SM_DATA_DIR, "experiments", "s1", release_name, lc
+            )
             # skip existings
             if not os.path.isdir(dst_dir):
                 os.makedirs(dst_dir, exist_ok=True)
@@ -66,6 +68,6 @@ def main() -> None:
 if __name__ == "__main__":
     # [TODO] : use command line args
     # args_src_dir: str = "m:\\DATASETS\\cv\\cv-corpus-16.0-2023-12-06"
-    args_src_dir: str = os.path.join(conf.CV_METADATA_BASE_DIR, conf.CV_DATASET_VERSION)
+    args_src_dir: str = os.path.join(conf.CV_METADATA_BASE_DIR, conf.CV_FULL_VERSION)
 
     main()

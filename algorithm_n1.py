@@ -25,7 +25,7 @@
 #
 # This script is part of Common Voice ToolBox Package
 #
-# github: https://github.com/HarikalarKutusu/common-voice-diversity-check
+# github: https://github.com/HarikalarKutusu/cv-tbox-split-maker
 # Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
@@ -37,6 +37,9 @@ import csv
 
 # from datetime import datetime
 import pandas as pd
+
+# module
+import conf
 
 HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
@@ -226,7 +229,7 @@ def main() -> None:
     print("=== A New Corpora Creator Algorithm for Common Voice Datasets ===")
 
     # Copy source experiment tree to destination experiment
-    experiments_path: str = os.path.join(HERE, "experiments")
+    experiments_path: str = os.path.join(conf.SM_DATA_DIR, "experiments")
     src_exppath: str = os.path.join(experiments_path, SOURCE_EXPERIMENT_DIR)
     dst_exppath: str = os.path.join(experiments_path, DESTINATION_EXPERIMENT_DIR)
     shutil.copytree(src=src_exppath, dst=dst_exppath, dirs_exist_ok=True)

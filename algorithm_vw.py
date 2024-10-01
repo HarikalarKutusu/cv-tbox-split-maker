@@ -16,7 +16,7 @@ Alternative splitting algorithm which uses all recordings (v1) more optimized fo
 #
 # This script is part of Common Voice ToolBox Package
 #
-# github: https://github.com/HarikalarKutusu/common-voice-diversity-check
+# github: https://github.com/HarikalarKutusu/cv-tbox-split-maker
 # Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
@@ -72,7 +72,9 @@ def algorithm_vw(val_path: str) -> AlgorithmResults:
     src_corpus_dir: str = os.path.split(val_path)[0]
     lc: str = os.path.split(src_corpus_dir)[1]
     ver: str = os.path.split(os.path.split(src_corpus_dir)[0])[1]
-    dst_path: str = os.path.join(HERE, "experiments", aspecs.dst_algo_dir, ver, lc)
+    dst_path: str = os.path.join(
+        conf.SM_DATA_DIR, "experiments", aspecs.dst_algo_dir, ver, lc
+    )
     results.lc = lc
     results.ver = ver
     # results.ver = ver.replace("cv-corpus-", "")
@@ -319,8 +321,12 @@ def main() -> None:
     g.start_time = datetime.now()
 
     # Copy source experiment tree to destination experiment
-    src_exppath: str = os.path.join(HERE, "experiments", aspecs.src_algo_dir)
-    dst_exppath: str = os.path.join(HERE, "experiments", aspecs.dst_algo_dir)
+    src_exppath: str = os.path.join(
+        conf.SM_DATA_DIR, "experiments", aspecs.src_algo_dir
+    )
+    dst_exppath: str = os.path.join(
+        conf.SM_DATA_DIR, "experiments", aspecs.dst_algo_dir
+    )
 
     # Get total for progress display
     all_validated: "list[str]" = glob.glob(

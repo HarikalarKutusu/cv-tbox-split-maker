@@ -21,7 +21,7 @@ Standard Common Voice CorporaCreator algorithm which is used to create the defau
 #
 # This script is part of Common Voice ToolBox Package
 #
-# github: https://github.com/HarikalarKutusu/common-voice-diversity-check
+# github: https://github.com/HarikalarKutusu/cv-tbox-split-maker
 # Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
@@ -44,8 +44,7 @@ import av
 # Module
 import conf
 from typedef import AlgorithmSpecs, Globals
-from lib import LocalCorpus
-from lib import df_read, df_write, final_report
+from lib import LocalCorpus, df_read, df_write, final_report
 
 # Get rid of warnings
 logging.getLogger("libav").setLevel(logging.ERROR)
@@ -212,21 +211,21 @@ def handle_clip_durations():
     print("=== REFRESH CLIP DURATIONS ===")
     # remove existing clip durations from older versions
     old_clip_durations: list[str] = glob.glob(
-        os.path.join(HERE, "experiments", "**", CDUR_FN), recursive=True
+        os.path.join(conf.SM_DATA_DIR, "experiments", "**", CDUR_FN), recursive=True
     )
     print(
         f"=== Found {len(old_clip_durations)} files in local files, we will delete older ones..."
     )
     for inx, clip_path in enumerate(old_clip_durations):
         # keep for last version
-        if not clip_path.split(os.sep)[-4] == conf.CV_DATASET_VERSION:
+        if not clip_path.split(os.sep)[-4] == conf.CV_FULL_VERSION:
             print("Remove:", inx, "/".join(clip_path.split(os.sep)[-4:]))
             os.remove(path=clip_path)
         else:
             print("Skip:", inx, "/".join(clip_path.split(os.sep)[-4:]))
     # recalculate clip durations
     glob_path: str = os.path.join(
-        conf.CV_DATASET_BASE_DIR, conf.CV_DATASET_VERSION, "**", "clips"
+        conf.CV_EXTRACTED_BASE_DIR, conf.CV_FULL_VERSION, "**", "clips"
     )
     print(f"Searching clips dirs with {glob_path}")
     clips_dirs: list[str] = glob.glob(glob_path, recursive=False)
@@ -248,8 +247,12 @@ def main() -> None:
     )
 
     # Copy source experiment tree to destination experiment
-    src_exppath: str = os.path.join(HERE, "experiments", aspecs.src_algo_dir)
-    dst_exppath: str = os.path.join(HERE, "experiments", aspecs.dst_algo_dir)
+    src_exppath: str = os.path.join(
+        conf.SM_DATA_DIR, "experiments", aspecs.src_algo_dir
+    )
+    dst_exppath: str = os.path.join(
+        conf.SM_DATA_DIR, "experiments", aspecs.dst_algo_dir
+    )
 
     # Calculate clip durations?
     if DO_CALC_CLIP_DURATIONS:
@@ -259,10 +262,10 @@ def main() -> None:
     if USE_SOURCE_DATASET_DIR:
         # copy all .tsv files while forming structure
         print("=== COPY .TSV FILES FROM DATASETS ===")
-        copyto_corpus_dir: str = os.path.join(src_exppath, conf.CV_DATASET_VERSION)
+        copyto_corpus_dir: str = os.path.join(src_exppath, conf.CV_FULL_VERSION)
         os.makedirs(name=copyto_corpus_dir, exist_ok=True)
         shutil.copytree(
-            src=os.path.join(conf.CV_DATASET_BASE_DIR, conf.CV_DATASET_VERSION),
+            src=os.path.join(conf.CV_EXTRACTED_BASE_DIR, conf.CV_FULL_VERSION),
             dst=copyto_corpus_dir,
             dirs_exist_ok=True,
             ignore=shutil.ignore_patterns("*.mp3"),
