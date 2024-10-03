@@ -89,13 +89,21 @@ def df_write(df: pd.DataFrame, fpath: str) -> None:
         lineterminator="\n",
     )
 
+
 #
 # Remove deleted users
 #
 def remove_deleted_users(df_val: pd.DataFrame) -> pd.DataFrame:
     """Given validated, remove recordings of deleted users from it, before splitting"""
-    df_del: pd.DataFrame = df_read(os.path.join(".", "data", "deleted_users.tsv")).astype(str)
-    return df_val[ ~df_val["client_id"].isin(df_del["client_id"]) ]
+    if df_val.shape[0] == 0:
+        return df_val
+    deleted_set: set[str] = set(
+        df_read(os.path.join(".", "data", "deleted_users.tsv"))
+        .astype(str)["client_id"]
+        .to_list()
+    )
+    return df_val[~df_val["client_id"].isin(deleted_set)]
+
 
 #
 # Adapted from original Corpora Creator - removed unneeded features
