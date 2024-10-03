@@ -10,7 +10,7 @@
 #
 # This script is part of Common Voice ToolBox Package
 #
-# github: https://github.com/HarikalarKutusu/common-voice-diversity-check
+# github: https://github.com/HarikalarKutusu/cv-tbox-split-maker
 # Copyright: (c) Bülent Özden, License: AGPL v3.0
 ###########################################################################
 
@@ -35,10 +35,10 @@ if not HERE in sys.path:
     sys.path.append(HERE)
 
 
-def main() -> None:
+def main(src_dir: str) -> None:
     """Main process"""
-    release_name: str = os.path.split(args_src_dir)[-1]
-    src_locale_dirs: list[str] = glob.glob(os.path.join(args_src_dir, "*"))
+    release_name: str = os.path.split(src_dir)[-1]
+    src_locale_dirs: list[str] = glob.glob(os.path.join(src_dir, "*"))
     total_cnt: int = len(src_locale_dirs)
     print(f"Copying .TSV files from {total_cnt} locales")
     pbar = tqdm(total=total_cnt, unit=" Dataset")
@@ -48,9 +48,11 @@ def main() -> None:
         cnt += 1
         if os.path.isdir(src_lc_dir):
             lc: str = os.path.split(src_lc_dir)[-1]
-            dst_dir: str = os.path.join(HERE, "experiments", "s1", release_name, lc)
+            dst_dir: str = os.path.join(
+                conf.SM_DATA_DIR, "experiments", "s1", release_name, lc
+            )
             # skip existings
-            if not os.path.isdir(dst_dir):
+            if not os.path.isdir(dst_dir) and not conf.FORCE_CREATE:
                 os.makedirs(dst_dir, exist_ok=True)
                 files: list[str] = glob.glob(os.path.join(src_lc_dir, "*.tsv"))
                 for f in files:
@@ -66,6 +68,6 @@ def main() -> None:
 if __name__ == "__main__":
     # [TODO] : use command line args
     # args_src_dir: str = "m:\\DATASETS\\cv\\cv-corpus-16.0-2023-12-06"
-    args_src_dir: str = os.path.join(conf.CV_METADATA_BASE_DIR, conf.CV_DATASET_VERSION)
+    args_src_dir: str = os.path.join(conf.CV_METADATA_BASE_DIR, conf.CV_FULL_VERSION)
 
-    main()
+    main(args_src_dir)
