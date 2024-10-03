@@ -1,14 +1,14 @@
 # Common Voice Toolbox - Split Maker
 
-A collection of scripts to create alternative splits, to check important measures in multiple Common Voice relases, languages and alternate splitting strategies.
+A collection of scripts to create alternative splits, to check important measures in multiple Common Voice releases, languages and alternate splitting strategies.
 
-This tooling will be part of ToolBox, released separately. It will evantually be transformed into a more generalized script in the core.
+This tooling will be part of ToolBox, to be released separately. It will evantually be transformed into a more generalized script in the core.
 
 In the current state the toolchain is:
 
-cv-tbox-split-maker (create splits) => cv-tbox-dataset-compiler (compiles statistics) => cv-tbox-dataset-analyzer (web interface/visualization tool for statistics)
+[cv-tbox-split-maker](https://github.com/HarikalarKutusu/cv-tbox-split-maker) (create splits) => [cv-tbox-dataset-compiler](https://github.com/HarikalarKutusu/cv-tbox-dataset-compiler) (compile detailed statistics) => [cv-tbox-dataset-analyzer](https://github.com/HarikalarKutusu/cv-tbox-dataset-analyzer) (web interface/visualization tool for statistics)
 
-PS: This repository has been renamed from "Common Voice Diversity Check" into "Common Voice Toolbox - Split Maker"
+Note: This repository has been renamed from "Common Voice Diversity Check" into "Common Voice Toolbox - Split Maker"
 
 ## Why?
 
@@ -47,22 +47,22 @@ Options:
 python3 merge_delta.py
 ```
 
-We have previous FULL dataset(s) (e.g. v18.0) and downloaded DELTA dataset(s) (v19.0 delta) - and extracted all of the .tsv (and probably .mp3) files. This script combines them and creates the new FULL dataset (e.g. v19.0 FULL). But:
+We have previous FULL dataset(s) (e.g. v18.0) and downloaded DELTA dataset(s) (v19.0 delta) - and extracted all of the .tsv (and maybe .mp3) files. This script combines them and creates the new FULL dataset (e.g. v19.0 FULL). But:
 
-- It does NOT handle `.mp3` files to prevent duplication. If you want you can just merge the clips directories (e.g. `v18.0/clips/*.mp3` and `v19.0-delta/clips/*.mp3` into the new v19.0/clips by moving them)
+- It does NOT handle `.mp3` files to prevent duplication. If you want, you can just merge the clips directories (e.g. `v18.0/clips/*.mp3` and `v19.0-delta/clips/*.mp3` into the new `v19.0/clips` by moving them)
 - It does NOT create the missing training splits (i.e. `train.tsv`, `dev.tsv`, and `test.tsv` files). It is the job of the `s1` algorithm as explained below. After creating the default splits, you can manually copy them into the created full version directory (e.g. v19.0 in the above example)
-- The result metadata will have the same records, but in different order due to different algorithms. In general, the order should not be important because during training they should be shuffelled anyway.
+- The result metadata will have the same records, but in different order due to different algorithms. In general, the order should not be important because during training they should be randomized anyway.
 
 The script handles the following:
 
 - (If they exists) merges `validated.tsv`, `invalidated.tsv`, `reported.tsv` and `clip_durations.tsv` files and writes them into new full dataset directory
-- Handles `other.tsv`. Some of the records in old `other.tsv` might be distributed to `validated.tsv` and `invalidated.tsv`, others might be added. We calculate a new one and add ones from new DELTA.
-- From the new DELTA, copies other non-delta style files directly into new full dataset directory (currently `*_sentences.tsv` files, but this might change in the future)
-- De-duplicates merged files (except `reported.tsv`, which can include multiple reports of the same sentence)
+- Handles `other.tsv`: Some of the records in old `other.tsv` might be distributed to `validated.tsv` and `invalidated.tsv`, others might be added. We drop the moved ones and add new ones from the new DELTA.
+- From the new DELTA, copies other non-delta style files directly into new full dataset directory (currently `*_sentences.tsv` files, but this might change in future CV releases)
+- De-duplicates merged files (except `reported.tsv`, which can include multiple reports of the same sentence with the same reason)
 
 After running this script you should:
 
-- Import the resultant files with `collect.py` (see below)
+- Import the resultand files with `collect.py` (see below)
 - Run CorporaCreator `s1` algorithm to create the default splits for the new FULL dataset (i.e. `train.tsv`, `dev.tsv`, and `test.tsv`)
 - If desired, copy generated training splits back into the full expanded dataset directory (you should do it manually for now)
 
@@ -78,7 +78,7 @@ From the expanded FULL dataset directory, copies metadata files to internal spac
 
 - **algorithm_xxx.py** : Different splitting algorithms to execute (see below)
 
-NOTE: While running algorithmns, we drop any voices that we know that they have deleted their recordings. We keep the data under the `<repo_root>/data` directory. We will be analyzing the complete data and extend this list. Deleted users' recordings do not exsist in later CV releases - after their deletion request, but we should also honor their wishes in the previous versions.
+NOTE: While running the algorithmns, we drop any voices that we know that they have deleted their recordings. We keep the data under the `<repo_root>/data` directory. We will be analyzing the complete data and extend this list. Deleted users' recordings do not exist in later CV releases - after their deletion request, but we should also honor their wishes when working with previous versions.
 
 ### Discontinued script (the results can already be seen in the Dataset Analyzer)
 
@@ -89,14 +89,14 @@ NOTE: While running algorithmns, we drop any voices that we know that they have 
 To prepare:
 
 - Clone the repo and cd into it
-- Use `Python v3.12.x+`, create a venv and activate it.
+- Use `Python v3.12.x+`, create a venv and activate it (prefer latest - we work with latest and do not check compatibility issues in older versions).
 - Run `pip install -U -r requirements.txt` to install the dependencies.
 - Put your downloaded dataset(s) into a directory (e.g. `/downloaded_datasets/cv-corpus-18.0-2024-06-14/*.tar.gz`)
 - If you work with delta releases, put them also into the same directory (e.g. `/downloaded_datasets/cv-corpus-19.0-delta-2024-09-13/*.tar.gz`)
 - Create a directory for expanded dataset files (e.g. `/datasets` which would include subdirs like `cv-corpus-18.0-2024-06-14/<lc>` when expanded)
-- Edit `conf.py` to point to them
+- Edit `conf.py` to point to these directories and specify the versions you want to work with.
 - Run `python extract.py` to extract only the .tsv files from the datasets (see above for options)
-- Run `python merge_delta.py` to merge previous full versions with new delta versions (do not forget to run the `s1` algorithm for in this case)
+- (If working with delta) Run `python merge_delta.py` to merge previous full versions with new delta versions (do not forget to run the `s1` algorithm for in this case)
 - Run `python collect.py` to copy the metadata files into the internal working area
 - Run the aplitting algoritm(s) you desire
 
@@ -116,21 +116,21 @@ data_root/experiments
 
 Under `experiments/s1`, **ALL** `.tsv` files from the release can be found. Other algorithm directories only contain `train/dev/test.tsv` files.
 
-**A NOTE**: We work with all versions and languages to analyze them. But you can work with a single language or a couple of languages. The scripts are *data-driven*, they will process what you put into the source directories. So might we be working with a single şlanguage and want to add another, no problem (if not forced to overwrite from `config.py` the scripts will exclude already processed languages chekking directory existance).
+**A NOTE**: We work with all versions and languages to analyze them. But you can work with a single language or a couple of languages. The scripts are *data-driven*, they will process what you put into the source directories. So you might we be working with a single language and want to add another, no problem (if not forced to overwrite from `config.py`, the scripts will exclude already processed languages checking directory existance).
 
 ## Algorithms and the data
 
 The data we use is huge and not suited for github. We used the following:
 
 - **s1**: Default splits in datasets, created by the current Common Voice CorporaCreator (-s 1 default option)
-- **s5/s99**: Alternative splits created by the current Common Voice CorporaCreator with -s 5 and 99 option, taking up to 5/99 recordings per sentence. 5 is a reasonabşle number anf 99 takes nearly the whole dataset.
+- **s5/s99**: Alternative splits created by the current Common Voice CorporaCreator with -s 5 and 99 options, taking up to 5/99 recordings per sentence. 5 is a reasonable number and 99 takes nearly the whole dataset. Note that as of 2024 the limit per sentence is 15 recordings at max (except "benchmark" sentences from 2021, containing numbers, yes, no etc.)
 - **v1**: ("Voice First") Alternative split created by "algorithm-v1.py". This is a 80-10-10% (train-dev-test) splitting with 25-25-50% voice diversity (nearly) ensured. This algorithm has been suggested to Common Voice Project for being used as default splitting algorithm, with a report including a detailed analysis and some training results.
-- **vw**: ("Voice first for Whisper") A version of v1 for better OpenAI Whisper fine-tuning, with 90-5-5% splits, keeping 25-25-50% diversity (only available for Whisper languages).
+- **vw**: ("Voice first for Whisper") A version of v1 for better OpenAI Whisper fine-tuning, with 90-5-5% splits, keeping 25-25-50% diversity (only available for Whisper languages, speeds up training).
 - **vx**: ("Voice first for eXternal test") A version of v1 with 95-5-0% splits and 50-50-0% diversity, so no test split, where you can test your model against other datasets like Fleurs or Voxpopuli (only available for Fleurs & Voxpopuli languages).
 
-For `vw` and `vx` we limited the process to only include datasets with >=2k recordings in validated bucket.
+For `vw` and `vx` we limited the process to only include datasets with >=2k recordings in validated bucket. Language codes for different dataset flavors are listed in `languages.py` file.
 
-Compressed splits for each language / dataset version / algorithm can be found under the [shared Google Drive location](https://drive.google.com/drive/folders/13c3VME_qRT1JSGjPue153K8FiDBH4QD2?usp=drive_link). To use them in your trainings, just download one and override the default train/dev/test.tsv files in your expanded dataset directory.
+Compressed splits for each language / dataset version / algorithm can be found under the [shared Google Drive location](https://drive.google.com/drive/folders/13c3VME_qRT1JSGjPue153K8FiDBH4QD2?usp=drive_link). To use them in your trainings, just download one and override the default `train/dev/test.tsv` files in your expanded dataset directory. Make sure you match the versions.
 
 ## Other
 
@@ -140,7 +140,7 @@ AGPL v3.0
 
 ### Some Performance Metrics
 
-Here are some performance metrics I recorded on the following hardware after the release of Common Voice v16.1, where I re-implemented the multipprocessing and ran the whole set of algorithms (except s1, which I've taken from the releases) on all active CV releases (left out intermediate/corrected ones like v2, 5.0, 16.0 etc).
+Here are some performance metrics I recorded on the following hardware after the release of Common Voice v16.1, where I re-implemented the multipprocessing and ran the whole set of algorithms (except s1, which I've taken from the releases) on all active CV releases (we leave out intermediate/corrected ones like v2, 5.0, 6.0, 16.0 etc).
 
 - Intel i7 8700K 6 core / 12 tread @3.7/4.3 GHz, 48 GB DDR4 RAM @3000 GHz (>32 GB empty)
 - Compressed Data: On an external 8TB Seagate Backup+ HUB w. USB3 (100-110 MB/s, ~60-65 MB/s continuous read)
