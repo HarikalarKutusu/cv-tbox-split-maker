@@ -78,6 +78,8 @@ From the expanded FULL dataset directory, copies metadata files to internal spac
 
 - **algorithm_xxx.py** : Different splitting algorithms to execute (see below)
 
+NOTE: While running algorithmns, we drop any voices that we know that they have deleted their recordings. We keep the data under the `<repo_root>/data` directory. We will be analyzing the complete data and extend this list. Deleted users' recordings do not exsist in later CV releases - after their deletion request, but we should also honor their wishes in the previous versions.
+
 ### Discontinued script (the results can already be seen in the Dataset Analyzer)
 
 - **tbox_diversity_table.py** : The script will scan all experiments, versions, and languages under experiments directory and builds results/$diversity_data.tsv file containing everything. You can then take it and analyze further or use the Excel file provided.
