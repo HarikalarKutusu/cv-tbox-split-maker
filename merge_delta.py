@@ -41,7 +41,7 @@ if not HERE in sys.path:
     sys.path.append(HERE)
 
 PROC_LIMIT: int = 4
-PROC_COUNT: int = min(PROC_LIMIT, psutil.cpu_count(logical=True))
+PROC_COUNT: int = min(PROC_LIMIT, psutil.cpu_count(logical=True) or 1)
 output_lock = threading.Lock()
 
 

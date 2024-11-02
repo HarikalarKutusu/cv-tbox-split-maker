@@ -104,7 +104,7 @@ def main(
         src_cnt: int = len(src_files)
 
         # Low number of cores only to prevent HDD trashing
-        proc_count: int = min(MINIMAL_PROCS, psutil.cpu_count(logical=False))
+        proc_count: int = min(MINIMAL_PROCS, psutil.cpu_count(logical=False) or 1)
 
         print(
             f"Extracting ALL files from {src_cnt}/{total_cnt} compressed datasets in {proc_count} processes"
@@ -141,7 +141,7 @@ def main(
         src_cnt: int = len(src_files)
 
         # Real cores only to prevent excessive HDD head movements
-        proc_count: int = psutil.cpu_count(logical=False)
+        proc_count: int = psutil.cpu_count(logical=False) or 1
 
         print(
             f"Extracting only .TSV files from {src_cnt}/{total_cnt} compressed datasets in {proc_count} processes"

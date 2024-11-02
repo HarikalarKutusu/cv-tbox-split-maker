@@ -47,7 +47,7 @@ HERE: str = os.path.dirname(os.path.realpath(__file__))
 if not HERE in sys.path:
     sys.path.append(HERE)
 
-PROC_COUNT: int = psutil.cpu_count(logical=True)  # Full usage
+PROC_COUNT: int = psutil.cpu_count(logical=True) or 1  # Full usage
 
 g = Globals()
 aspecs = AlgorithmSpecs(
