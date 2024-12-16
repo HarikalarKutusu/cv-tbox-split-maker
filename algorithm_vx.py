@@ -39,7 +39,14 @@ from tqdm import tqdm
 # Module
 from languages import LANGUAGES_ALLOWED
 from typedef import AlgorithmSpecs, AlgorithmResults, Globals
-from lib import df_read, df_write, final_report, remove_deleted_users
+from lib import (
+    df_read,
+    df_write,
+    final_report,
+    mp_optimize_params,
+    remove_deleted_users,
+    sort_by_largest_file,
+)
 import conf
 
 #
@@ -316,6 +323,10 @@ def main() -> None:
 
     g.total_cnt = len(all_validated)
     g.src_cnt = len(final_list)
+
+    # MP optimization
+    final_list = sort_by_largest_file(final_list)
+    final_list = mp_optimize_params(final_list, PROC_COUNT)
 
     print(
         f"Re-splitting for {g.src_cnt} out of {g.total_cnt} corpora in {PROC_COUNT} processes."

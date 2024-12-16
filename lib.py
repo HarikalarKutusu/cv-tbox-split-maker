@@ -106,6 +106,28 @@ def remove_deleted_users(df_val: pd.DataFrame) -> pd.DataFrame:
 
 
 #
+# Multiprocessing Optimization
+#
+
+
+def mp_optimize_params(params_list: list, num_procs: int) -> list:
+    """Re-distribute the parameter list sorted by filesize to chunks to minimize wall-time"""
+    res_list: list = []
+    for i in range(num_procs):
+        res_list.extend(params_list[i::num_procs])
+    return res_list
+
+
+def sort_by_largest_file(fpaths: list[str]) -> list[str]:
+    """Given a list of file paths, gets files sizes, soort decending and returns sorted paths"""
+    recs: list[list[str | int]] = []
+    for p in fpaths:
+        recs.append([p, os.path.getsize(p)])
+    recs = sorted(recs, key=(lambda x: x[1]), reverse=True)
+    return [str(row[0]) for row in recs]
+
+
+#
 # Adapted from original Corpora Creator - removed unneeded features
 # - Removed logger
 # - No need to re-partition (we already have validated)

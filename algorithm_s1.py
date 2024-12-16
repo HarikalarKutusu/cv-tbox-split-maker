@@ -47,7 +47,15 @@ import av
 # Module
 import conf
 from typedef import AlgorithmSpecs, Globals
-from lib import LocalCorpus, df_read, df_write, final_report, remove_deleted_users
+from lib import (
+    LocalCorpus,
+    df_read,
+    df_write,
+    final_report,
+    mp_optimize_params,
+    remove_deleted_users,
+    sort_by_largest_file,
+)
 
 # Get rid of warnings
 logging.getLogger("libav").setLevel(logging.ERROR)
@@ -426,6 +434,10 @@ def main(collect: bool, calc_durations: bool) -> None:
 
     g.total_cnt = len(all_validated)
     g.src_cnt = len(final_list)
+
+    # MP optimization
+    final_list = sort_by_largest_file(final_list)
+    final_list = mp_optimize_params(final_list, PROC_COUNT)
 
     # schedule mp
     print(
