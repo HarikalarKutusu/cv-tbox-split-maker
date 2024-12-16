@@ -22,11 +22,11 @@ SM_DATA_DIR: str = os.path.join("T:", os.sep, "GITREPO_DATA", "cv-tbox-split-mak
 
 # - Latest FULL Version to work on
 # - Latest Delta Version to work merge (if you are using delta upgrade)
-CV_FULL_VERSION: str = "cv-corpus-19.0-2024-09-13"
-CV_DELTA_VERSION: str = "cv-corpus-19.0-delta-2024-09-13"
+CV_FULL_VERSION: str = "cv-corpus-20.0-2024-12-06"
+CV_DELTA_VERSION: str = "cv-corpus-20.0-delta-2024-12-06"
 
 # Previous FULL Version to upgrade with delta (if you are using delta upgrade)
-CV_FULL_PREV_VERSION: str = "cv-corpus-18.0-2024-06-14"
+CV_FULL_PREV_VERSION: str = "cv-corpus-19.0-2024-09-13"
 
 #
 # Splitting Parameters
