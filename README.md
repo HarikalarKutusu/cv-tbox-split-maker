@@ -72,7 +72,7 @@ After running this script you should:
 python3 collect.py
 ```
 
-From the expanded FULL dataset directory, copies metadata files to internal space to work on (these include common .tsv files and default split files).
+From the expanded FULL dataset directory, copies metadata files to internal space to work on (these include common .tsv files and default split files and will be copied under "s1" directory).
 
 ### Splitting
 

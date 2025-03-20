@@ -44,7 +44,7 @@ import psutil
 
 # Module
 from typedef import AlgorithmSpecs, Globals
-from lib import LocalCorpus
+from lib import LocalCorpus, mp_optimize_params, sort_by_largest_file
 from lib import df_read, final_report, remove_deleted_users
 import conf
 
@@ -189,6 +189,10 @@ def main() -> None:
 
     g.total_cnt = len(all_validated)
     g.src_cnt = len(final_list)
+
+    # MP optimization
+    final_list = sort_by_largest_file(final_list)
+    final_list = mp_optimize_params(final_list, PROC_COUNT)
 
     # schedule mp
     print(
