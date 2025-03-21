@@ -130,7 +130,7 @@ The data we use is huge and not suited for github. We used the following:
 
 For `vw` and `vx` we limited the process to only include datasets with >=2k recordings in validated bucket. Language codes for different dataset flavors are listed in `languages.py` file.
 
-Compressed splits for each language / dataset version / algorithm can be found under the [shared Google Drive location](https://drive.google.com/drive/folders/13c3VME_qRT1JSGjPue153K8FiDBH4QD2?usp=drive_link). To use them in your trainings, just download one and override the default `train/dev/test.tsv` files in your expanded dataset directory. Make sure you match the versions.
+Compressed splits for each language / dataset version / algorithm can be found under the [shared Google Drive location](https://bit.ly/gdrive_tbox_data). To use them in your trainings, just download one and override the default `train/dev/test.tsv` files in your expanded dataset directory. Make sure you match the versions.
 
 ## Other
 

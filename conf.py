@@ -1,4 +1,4 @@
-""" cv-tbox Split Creator - Configuration File """
+"""cv-tbox Split Creator - Configuration File"""
 
 import os
 
@@ -7,7 +7,7 @@ import os
 #
 
 # Where you keep your compressed datasets (downloaded .tar.gz files)
-CV_COMPRESSED_BASE_DIR: str = os.path.join("V:", os.sep, "DS_COMPRESSED", "VOICE", "CV")
+CV_COMPRESSED_BASE_DIR: str = os.path.join("X:", os.sep, "DS_COMPRESSED", "VOICE", "CV")
 # Where you keep your expanded datasets (will be expanded like <CV_DATASET_BASE_DIR>/cv-corpus-19.0-2024-09-13/<lc>)
 CV_EXTRACTED_BASE_DIR: str = os.path.join("T:", os.sep, "TBOX", "ds_ext", "cv")
 # - If you keep metadata with clips (e.g. working on a single language) set this to be same as CV_DATASET_BASE_DIR
@@ -22,11 +22,11 @@ SM_DATA_DIR: str = os.path.join("T:", os.sep, "GITREPO_DATA", "cv-tbox-split-mak
 
 # - Latest FULL Version to work on
 # - Latest Delta Version to work merge (if you are using delta upgrade)
-CV_FULL_VERSION: str = "cv-corpus-20.0-2024-12-06"
-CV_DELTA_VERSION: str = "cv-corpus-20.0-delta-2024-12-06"
+CV_FULL_VERSION: str = "cv-corpus-21.0-2025-03-14"
+CV_DELTA_VERSION: str = "cv-corpus-21.0-delta-2025-03-14"
 
 # Previous FULL Version to upgrade with delta (if you are using delta upgrade)
-CV_FULL_PREV_VERSION: str = "cv-corpus-19.0-2024-09-13"
+CV_FULL_PREV_VERSION: str = "cv-corpus-20.0-2024-12-06"
 
 #
 # Splitting Parameters
