@@ -186,15 +186,15 @@ def corpora_creator_original(val_path: str) -> bool:
     # move required files to destination
     os.makedirs(dst_corpus_dir, exist_ok=True)
 
+    # copy to original directory (source) in case of merge
+    shutil.copy(os.path.join(temp_path, lc, "train.tsv"), src_corpus_dir)
+    shutil.copy(os.path.join(temp_path, lc, "dev.tsv"), src_corpus_dir)
+    shutil.copy(os.path.join(temp_path, lc, "test.tsv"), src_corpus_dir)
+
     # move to algorithm directory (destination)
     shutil.move(os.path.join(temp_path, lc, "train.tsv"), dst_corpus_dir)
     shutil.move(os.path.join(temp_path, lc, "dev.tsv"), dst_corpus_dir)
     shutil.move(os.path.join(temp_path, lc, "test.tsv"), dst_corpus_dir)
-
-    # copy to original directory (source) in case of merge
-    shutil.copy(dst_corpus_dir, src_corpus_dir)
-    shutil.copy(dst_corpus_dir, src_corpus_dir)
-    shutil.copy(dst_corpus_dir, src_corpus_dir)
 
     shutil.rmtree(os.path.join(temp_path, lc))
 
