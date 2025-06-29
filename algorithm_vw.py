@@ -57,7 +57,7 @@ if not HERE in sys.path:
 PROC_COUNT: int = psutil.cpu_count(logical=True) or 1  # Full usage
 
 g = Globals()
-aspecs = AlgorithmSpecs(
+algo_specs = AlgorithmSpecs(
     src_algo_dir="s1",
     dst_algo_dir="vw",
     train_percentage=90.0,
@@ -80,7 +80,7 @@ def algorithm_vw(val_path: str) -> AlgorithmResults:
     lc: str = os.path.split(src_corpus_dir)[1]
     ver: str = os.path.split(os.path.split(src_corpus_dir)[0])[1]
     dst_path: str = os.path.join(
-        conf.SM_DATA_DIR, "experiments", aspecs.dst_algo_dir, ver, lc
+        conf.SM_DATA_DIR, "experiments", algo_specs.dst_algo_dir, ver, lc
     )
     results.lc = lc
     results.ver = ver
@@ -114,8 +114,10 @@ def algorithm_vw(val_path: str) -> AlgorithmResults:
     validated_df["sentence_lower"] = validated_df["sentence"].str.lower()
     # add an enumaration column for client_id's
     validated_df["v_enum"], _ = pd.factorize(validated_df["client_id"])
+    validated_df["v_enum"] = validated_df["v_enum"].astype(int)
     # add an enumaration column for client_id's
     validated_df["s_enum"], _ = pd.factorize(validated_df["sentence_lower"])
+    validated_df["s_enum"] = validated_df["s_enum"].astype(int)
 
     # Try with unique voices
 
@@ -140,8 +142,8 @@ def algorithm_vw(val_path: str) -> AlgorithmResults:
     # total_sentences: int = validated_df["s_enum"].max()
     total_voices: int = voices_df.shape[0]
 
-    test_voice_max: int = int(aspecs.max_test_user * total_voices)
-    dev_voice_max: int = int(aspecs.max_dev_user * total_voices)
+    test_voice_max: int = int(algo_specs.max_test_user * total_voices)
+    dev_voice_max: int = int(algo_specs.max_dev_user * total_voices)
 
     # Adaptive part - if population size >= 150.000, then use sample size calculation, else use percentages given
 
@@ -153,8 +155,8 @@ def algorithm_vw(val_path: str) -> AlgorithmResults:
     else:
         results.medium = 1
 
-    test_target: int = int(aspecs.test_percentage / 100 * total_validated)
-    dev_target: int = int(aspecs.dev_percentage / 100 * total_validated)
+    test_target: int = int(algo_specs.test_percentage / 100 * total_validated)
+    dev_target: int = int(algo_specs.dev_percentage / 100 * total_validated)
     # train_target: int = total_validated - dev_target - test_target
 
     #
@@ -257,20 +259,20 @@ def algorithm_vw(val_path: str) -> AlgorithmResults:
     #
 
     # get a list of unique voice enum in test set
-    test_voices: "list[str]" = test_slice["v_enum"].unique().tolist()
+    test_voices: list[int] = test_slice["v_enum"].unique().astype(int).tolist()
     # select all validated records for that list
     test_df: pd.DataFrame = validated_df[validated_df["v_enum"].isin(test_voices)]
 
     # Do it again for DEV
     # get a list of unique voice enum in dev set
-    dev_voices: "list[str]" = dev_slice["v_enum"].unique().tolist()
+    dev_voices: list[int] = dev_slice["v_enum"].unique().astype(int).tolist()
     # get a list of unique voice enum in dev set
     # total_dev_voices: int = len(dev_voices)
     # select all validated records for that list
     dev_df: pd.DataFrame = validated_df[validated_df["v_enum"].isin(dev_voices)]
 
     # Rest will be in TRAIN
-    train_voices: "list[str]" = train_slice["v_enum"].unique().tolist()
+    train_voices: list[int] = train_slice["v_enum"].unique().astype(int).tolist()
     # get a list of unique voice enum in test set
     # total_train_voices: int = len(train_voices)
     # get remaining directly from validated
@@ -329,14 +331,14 @@ def main() -> None:
 
     # Copy source experiment tree to destination experiment
     src_exppath: str = os.path.join(
-        conf.SM_DATA_DIR, "experiments", aspecs.src_algo_dir
+        conf.SM_DATA_DIR, "experiments", algo_specs.src_algo_dir
     )
     dst_exppath: str = os.path.join(
-        conf.SM_DATA_DIR, "experiments", aspecs.dst_algo_dir
+        conf.SM_DATA_DIR, "experiments", algo_specs.dst_algo_dir
     )
 
     # Get total for progress display
-    all_validated: "list[str]" = glob.glob(
+    all_validated: list[str] = glob.glob(
         os.path.join(src_exppath, "**", "validated.tsv"), recursive=True
     )
 
@@ -368,14 +370,14 @@ def main() -> None:
     final_list = sort_by_largest_file(final_list)
     final_list = mp_optimize_params(final_list, PROC_COUNT)
 
-    print(
-        f"Re-splitting for {g.src_cnt} out of {g.total_cnt} corpora in {PROC_COUNT} processes."
-    )
+    chunk_size: int = g.src_cnt // PROC_COUNT + 0 if g.src_cnt % PROC_COUNT == 0 else 1
+
     print(
         f"Skipping Existing: {g.skipped_exists} & Not Supported: {g.skipped_nosupport}"
     )
-
-    chunk_size: int = g.src_cnt // PROC_COUNT + 0 if g.src_cnt % PROC_COUNT == 0 else 1
+    print(
+        f"Re-splitting for {g.src_cnt} out of {g.total_cnt} corpora. PROCS={PROC_COUNT} chunk-size={chunk_size}."
+    )
 
     with mp.Pool(PROC_COUNT) as pool:
         with tqdm(total=g.src_cnt) as pbar:

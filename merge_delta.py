@@ -54,7 +54,7 @@ class Params(TypedDict):
     new_dir: str
 
 
-def merge_delta_process(params: Params) -> None:
+def merge_delta_process(params: Params) -> Params:
     """Multiprocessing handler for single language delta merge"""
     # create destinations
     lc: str = os.path.split(params["delta_dir"])[-1]
@@ -68,10 +68,15 @@ def merge_delta_process(params: Params) -> None:
     #
     # Merge data in files with delta nature
     #
-    decided_set: set[str] = {}
+    decided_set: set[str] = set()
     for f in ["validated", "invalidated", "clip_durations", "reported"]:
         df_prev: pd.DataFrame = df_read(os.path.join(params["old_dir"], f"{f}.tsv"))
-        df_delta: pd.DataFrame = df_read(os.path.join(params["delta_dir"], f"{f}.tsv"))
+        delta_fpath: str = os.path.join(params["delta_dir"], f"{f}.tsv")
+        df_delta: pd.DataFrame
+        if os.path.isfile(delta_fpath):
+            df_delta = df_read(delta_fpath)
+        else:
+            df_delta = pd.DataFrame(columns=df_prev.columns)
         # handle any new columns
         if len(set(df_prev.columns) - set(df_delta.columns)) != 0:
             df_prev.reindex(columns=df_delta.columns)
@@ -96,8 +101,12 @@ def merge_delta_process(params: Params) -> None:
     #
     # Handle "other"
     #
-    df_prev: pd.DataFrame = df_read(os.path.join(params["old_dir"], "other.tsv"))
-    df_delta: pd.DataFrame = df_read(os.path.join(params["delta_dir"], "other.tsv"))
+    df_prev = df_read(os.path.join(params["old_dir"], "other.tsv"))
+    delta_fpath = os.path.join(params["delta_dir"], "other.tsv")
+    if os.path.isfile(delta_fpath):
+        df_delta = df_read(delta_fpath)
+    else:
+        df_delta = pd.DataFrame(columns=df_prev.columns)
     # handle any new columns
     if len(set(df_prev.columns) - set(df_delta.columns)) != 0:
         df_prev.reindex(columns=df_delta.columns)
@@ -108,7 +117,7 @@ def merge_delta_process(params: Params) -> None:
     # only allow those not in new val & inval
     df_final = df_final[~df_final["path"].isin(decided_set)]
     df_write(df_final, os.path.join(params["new_dir"], "other.tsv"))
-    # return ğarams
+    # return params
     return params
 
 
@@ -184,10 +193,12 @@ def main(base_prev_dir: str, base_delta_dir: str) -> None:
     # Get related .tsv from previous version directory
     # concat them and save into base experiments/s1 directory
     #
-    print(f"Delta-Merge {actual_cnt} locales out of {total_cnt} PROCS=")
 
     num_procs: int = max(1, min(PROC_COUNT, actual_cnt))
     chunk_size: int = max(1, min(actual_cnt // 100, actual_cnt // num_procs))
+    print(
+        f"Delta-Merge {actual_cnt} locales out of {total_cnt} PROCS={num_procs} chunk-size={chunk_size}"
+    )
     _cnt: int = 0
     _par: Params
 

@@ -59,7 +59,7 @@ PROC_COUNT: int = psutil.cpu_count(logical=True) or 1  # Full usage
 output_lock = threading.Lock()
 
 g = Globals()
-aspecs = AlgorithmSpecs(
+algo_specs = AlgorithmSpecs(
     src_algo_dir="s1", dst_algo_dir="s99", duplicate_sentence_count=99
 )
 
@@ -74,7 +74,7 @@ aspecs = AlgorithmSpecs(
 def corpora_creator_original(val_path: str) -> bool:
     """Processes validated.tsv and create new train, dev, test splits"""
     dst_exppath: str = os.path.join(
-        conf.SM_DATA_DIR, "experiments", aspecs.dst_algo_dir
+        conf.SM_DATA_DIR, "experiments", algo_specs.dst_algo_dir
     )
     # results: list[bool] = []
 
@@ -113,7 +113,7 @@ def corpora_creator_original(val_path: str) -> bool:
             "-f",
             val_path,
             "-s",
-            str(aspecs.duplicate_sentence_count),
+            str(algo_specs.duplicate_sentence_count),
         ]
     )
     corpus: LocalCorpus = LocalCorpus(cc_args, lc, df_corpus)
@@ -160,10 +160,10 @@ def main() -> None:
 
     # Paths
     src_exppath: str = os.path.join(
-        conf.SM_DATA_DIR, "experiments", aspecs.src_algo_dir
+        conf.SM_DATA_DIR, "experiments", algo_specs.src_algo_dir
     )
     dst_exppath: str = os.path.join(
-        conf.SM_DATA_DIR, "experiments", aspecs.dst_algo_dir
+        conf.SM_DATA_DIR, "experiments", algo_specs.dst_algo_dir
     )
 
     # Get total for progress display
@@ -197,13 +197,13 @@ def main() -> None:
     final_list = mp_optimize_params(final_list, PROC_COUNT)
 
     # schedule mp
-    print(
-        f"Re-splitting for {g.src_cnt} out of {g.total_cnt} corpora in {PROC_COUNT} processes."
-    )
-    print(f"Skipping {g.skipped_exists} as they already exist.")
-
     chunk_size: int = min(
         10, g.src_cnt // PROC_COUNT + 0 if g.src_cnt % PROC_COUNT == 0 else 1
+    )
+
+    print(f"Skipping {g.skipped_exists} as they already exist.")
+    print(
+        f"Re-splitting for {g.src_cnt} out of {g.total_cnt} corpora. PROCS={PROC_COUNT} chunk-size={chunk_size}."
     )
 
     with mp.Pool(PROC_COUNT) as pool:
