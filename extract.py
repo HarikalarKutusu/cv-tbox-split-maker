@@ -143,15 +143,16 @@ def main(
         # Real cores only to prevent excessive HDD head movements
         proc_count: int = psutil.cpu_count(logical=False) or 1
 
-        print(
-            f"Extracting only .TSV files from {src_cnt}/{total_cnt} compressed datasets in {proc_count} processes"
-        )
         if conf.FORCE_CREATE:
             print("Expanding even the destination exists (force_create)")
         elif total_cnt > src_cnt:
             print(f"Skipping {total_cnt - src_cnt} already extracted datasets")
 
         chunk_size: int = src_cnt // proc_count + 0 if src_cnt % proc_count == 0 else 1
+
+        print(
+            f"Extracting only .TSV files from {src_cnt}/{total_cnt} compressed datasets. PROCS={proc_count} chunk-size={chunk_size}."
+        )
 
         with mp.Pool(proc_count) as pool:
             with tqdm(total=src_cnt) as pbar:
