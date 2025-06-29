@@ -193,10 +193,12 @@ def main(base_prev_dir: str, base_delta_dir: str) -> None:
     # Get related .tsv from previous version directory
     # concat them and save into base experiments/s1 directory
     #
-    print(f"Delta-Merge {actual_cnt} locales out of {total_cnt} PROCS=")
 
     num_procs: int = max(1, min(PROC_COUNT, actual_cnt))
     chunk_size: int = max(1, min(actual_cnt // 100, actual_cnt // num_procs))
+    print(
+        f"Delta-Merge {actual_cnt} locales out of {total_cnt} PROCS={num_procs} chunk-size={chunk_size}"
+    )
     _cnt: int = 0
     _par: Params
 
