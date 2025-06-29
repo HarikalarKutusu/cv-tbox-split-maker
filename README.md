@@ -118,6 +118,46 @@ Under `experiments/s1`, **ALL** `.tsv` files from the release can be found. Othe
 
 **A NOTE**: We work with all versions and languages to analyze them. But you can work with a single language or a couple of languages. The scripts are *data-driven*, they will process what you put into the source directories. So you might we be working with a single language and want to add another, no problem (if not forced to overwrite from `config.py`, the scripts will exclude already processed languages checking directory existance).
 
+### TL;DR - Quick Workflow
+
+For delta-merge workflow:
+
+```bash
+# !!! Make sure you handled paths in config.py !!!
+# extract new datasets
+python extract.py
+# extract new delta releases
+python extract.py --delta
+# Merge delta with previous relase
+python .\merge_delta.py
+# Collect data and create default splits
+python .\algorithm_s1.py --collect
+# Create other splits (those used in CV Dataset Analyzer)
+# Or select one which you will use
+python algorithm_s5.py
+python algorithm_s99.py
+python algorithm_v1.py
+python algorithm_vw.py
+python algorithm_vx.py
+```
+
+For full-relase workflow:
+
+```bash
+# !!! Make sure you handled paths in config.py !!!
+# extract new datasets (they include)
+python extract.py
+# Collect data
+python collect.py
+# Create other splits (those used in CV Dataset Analyzer)
+# Or select one which you will use
+python algorithm_s5.py
+python algorithm_s99.py
+python algorithm_v1.py
+python algorithm_vw.py
+python algorithm_vx.py
+```
+
 ## Algorithms and the data
 
 The data we use is huge and not suited for github. We used the following:
